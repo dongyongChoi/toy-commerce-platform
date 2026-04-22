@@ -1,0 +1,11 @@
+rootProject.name = 'toy-commerce-platform'
+
+include(
+    ':app:commerce-api',
+    ':common:common-core',
+    ':common:common-web',
+    ':domain:member',
+    ':domain:catalog',
+    ':domain:order',
+    ':domain:inventory',
+)

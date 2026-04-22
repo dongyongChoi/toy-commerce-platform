@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: commerce-api
+  profiles:
+    default: local
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
