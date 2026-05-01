@@ -29,6 +29,23 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("update");
     }
 
+    @Test
+    @DisplayName("redis 프로필은 Redis 캐시 설정을 제공한다")
+    void redisProfileContainsRedisCacheProperties() throws IOException {
+        PropertySource<?> propertySource = loadYamlPropertySource("application-redis.yml");
+
+        assertThat(propertySource.getProperty("spring.cache.type"))
+            .isEqualTo("redis");
+        assertThat(propertySource.getProperty("spring.cache.redis.cache-null-values"))
+            .isEqualTo(false);
+        assertThat(propertySource.getProperty("spring.cache.redis.key-prefix"))
+            .isEqualTo("toy-commerce:");
+        assertThat(propertySource.getProperty("spring.data.redis.host"))
+            .isEqualTo("${REDIS_HOST:localhost}");
+        assertThat(propertySource.getProperty("spring.data.redis.port"))
+            .isEqualTo("${REDIS_PORT:6379}");
+    }
+
     private PropertySource<?> loadYamlPropertySource(String resourceName) throws IOException {
         List<PropertySource<?>> propertySources = yamlPropertySourceLoader.load(
             resourceName,

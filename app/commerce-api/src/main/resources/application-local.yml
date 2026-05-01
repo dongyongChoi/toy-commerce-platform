@@ -1,4 +1,6 @@
 spring:
+  cache:
+    type: simple
   datasource:
     url: jdbc:h2:mem:toycommerce;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
     driver-class-name: org.h2.Driver
@@ -18,4 +20,3 @@ spring:
 logging:
   level:
     org.hibernate.SQL: debug
-

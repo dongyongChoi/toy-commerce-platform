@@ -14,8 +14,11 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.lang.reflect.Method;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -123,5 +126,55 @@ class ProductServiceTest {
         productService.deleteProduct(1L);
 
         then(productRepository).should().delete(product);
+    }
+
+    @Test
+    @DisplayName("상품 조회 메서드는 products 캐시를 사용한다")
+    void getProductMethods_useProductsCache() throws NoSuchMethodException {
+        Method getProducts = ProductService.class.getDeclaredMethod("getProducts");
+        Method getProduct = ProductService.class.getDeclaredMethod("getProduct", Long.class);
+
+        Cacheable productListCache = getProducts.getAnnotation(Cacheable.class);
+        Cacheable productCache = getProduct.getAnnotation(Cacheable.class);
+
+        assertThat(productListCache.cacheNames()).containsExactly("products");
+        assertThat(productListCache.key()).isEqualTo("'all'");
+        assertThat(productCache.cacheNames()).containsExactly("products");
+        assertThat(productCache.key()).isEqualTo("#productId");
+    }
+
+    @Test
+    @DisplayName("상품 단건 조회 메서드는 런타임에 파라미터 이름을 보존한다")
+    void getProductMethod_preservesParameterName() throws NoSuchMethodException {
+        Method getProduct = ProductService.class.getDeclaredMethod("getProduct", Long.class);
+
+        assertThat(getProduct.getParameters()[0].getName()).isEqualTo("productId");
+    }
+
+    @Test
+    @DisplayName("상품 변경 메서드는 products 캐시를 전체 삭제한다")
+    void productMutationMethods_evictProductsCache() throws NoSuchMethodException {
+        Method createProduct = ProductService.class.getDeclaredMethod("createProduct", CreateProductRequest.class);
+        Method updateProduct = ProductService.class.getDeclaredMethod("updateProduct", Long.class, UpdateProductRequest.class);
+        Method deleteProduct = ProductService.class.getDeclaredMethod("deleteProduct", Long.class);
+
+        assertCacheEvictsAllEntries(createProduct);
+        assertCacheEvictsAllEntries(updateProduct);
+        assertCacheEvictsAllEntries(deleteProduct);
+    }
+
+    @Test
+    @DisplayName("상품 응답은 Redis 기본 직렬화를 위해 직렬화 가능하다")
+    void productResponse_isSerializable() {
+        ProductResponse response = new ProductResponse(1L, "Keyboard", BigDecimal.valueOf(10000));
+
+        assertThat(response).isInstanceOf(java.io.Serializable.class);
+    }
+
+    private void assertCacheEvictsAllEntries(Method method) {
+        CacheEvict cacheEvict = method.getAnnotation(CacheEvict.class);
+
+        assertThat(cacheEvict.cacheNames()).containsExactly("products");
+        assertThat(cacheEvict.allEntries()).isTrue();
     }
 }
