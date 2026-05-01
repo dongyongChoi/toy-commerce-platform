@@ -1,11 +1,7 @@
 package com.toyproject.catalog.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+
 import java.math.BigDecimal;
 
 @Entity
@@ -25,6 +21,11 @@ public class Product {
     }
 
     public Product(String name, BigDecimal price) {
+        this.name = name;
+        this.price = price;
+    }
+
+    public void update(String name, BigDecimal price) {
         this.name = name;
         this.price = price;
     }

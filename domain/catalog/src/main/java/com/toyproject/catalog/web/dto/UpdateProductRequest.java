@@ -5,7 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 
-public record CreateProductRequest(
+public record UpdateProductRequest(
     @NotBlank(message = "name must not be blank")
     String name,
     @NotNull(message = "price must not be null")
@@ -13,4 +13,3 @@ public record CreateProductRequest(
     BigDecimal price
 ) {
 }
-

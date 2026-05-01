@@ -4,15 +4,12 @@ import com.toyproject.common.web.ApiResponse;
 import com.toyproject.member.application.MemberService;
 import com.toyproject.member.web.dto.CreateMemberRequest;
 import com.toyproject.member.web.dto.MemberResponse;
+import com.toyproject.member.web.dto.UpdateMemberRequest;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/members")
@@ -28,10 +25,29 @@ public class MemberController {
         return ApiResponse.success(memberService.getMembers());
     }
 
+    @GetMapping("/{memberId}")
+    public ApiResponse<MemberResponse> getMember(@PathVariable("memberId") Long memberId) {
+        return ApiResponse.success(memberService.getMember(memberId));
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<MemberResponse> createMember(@Valid @RequestBody CreateMemberRequest request) {
         return ApiResponse.success(memberService.createMember(request), "member created");
+    }
+
+    @PutMapping("/{memberId}")
+    public ApiResponse<MemberResponse> updateMember(
+        @PathVariable("memberId") Long memberId,
+        @Valid @RequestBody UpdateMemberRequest request
+    ) {
+        return ApiResponse.success(memberService.updateMember(memberId, request), "member updated");
+    }
+
+    @DeleteMapping("/{memberId}")
+    public ApiResponse<Void> deleteMember(@PathVariable("memberId") Long memberId) {
+        memberService.deleteMember(memberId);
+        return ApiResponse.success(null, "member deleted");
     }
 }
 
