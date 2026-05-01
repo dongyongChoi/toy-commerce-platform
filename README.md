@@ -106,3 +106,17 @@ flowchart TD
 2. `member`, `catalog`부터 실제 CRUD 확장
 3. `local`, `dev`, `prod` 설정 분리
 4. MySQL 프로필과 Docker Compose 추가
+
+## 로컬 MySQL 실행
+
+Docker Compose로 MySQL을 실행한 뒤 `mysql` 프로필로 애플리케이션을 실행할 수 있습니다.
+
+```powershell
+docker compose up -d mysql
+```
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=mysql'
+```
+
+기본 접속 정보는 `.env.example`에 정리되어 있습니다. 개인 환경에서 값을 바꾸고 싶다면 `.env` 파일을 만들어 Docker Compose 환경 변수로 사용하면 됩니다.
