@@ -45,6 +45,30 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("redis");
         assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka[3]"))
             .isEqualTo("kafka");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-config[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-config[1]"))
+            .isEqualTo("config");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-config[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-config[1]"))
+            .isEqualTo("mysql");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-config[2]"))
+            .isEqualTo("config");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-config[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-config[1]"))
+            .isEqualTo("mysql");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-config[2]"))
+            .isEqualTo("redis");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-config[3]"))
+            .isEqualTo("kafka");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-config[4]"))
+            .isEqualTo("config");
+        assertThat(propertySource.getProperty("spring.cloud.config.enabled"))
+            .isEqualTo(false);
+        assertThat(propertySource.getProperty("toy-commerce.config.source"))
+            .isEqualTo("local");
     }
 
     @Test
@@ -121,6 +145,21 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("toy-commerce.order.created");
         assertThat(propertySource.getProperty("toy-commerce.kafka.topics.order-cancelled"))
             .isEqualTo("toy-commerce.order.cancelled");
+    }
+
+    @Test
+    @DisplayName("config 프로필은 Config Server 클라이언트 설정을 제공한다")
+    void configProfileContainsConfigServerClientProperties() throws IOException {
+        PropertySource<?> propertySource = loadYamlPropertySource("application-config.yml");
+
+        assertThat(propertySource.getProperty("spring.config.import"))
+            .isEqualTo("optional:configserver:${CONFIG_SERVER_URI:http://localhost:8888}");
+        assertThat(propertySource.getProperty("spring.cloud.config.enabled"))
+            .isEqualTo(true);
+        assertThat(propertySource.getProperty("spring.cloud.config.name"))
+            .isEqualTo("commerce-api");
+        assertThat(propertySource.getProperty("spring.cloud.config.fail-fast"))
+            .isEqualTo(false);
     }
 
     private PropertySource<?> loadYamlPropertySource(String resourceName) throws IOException {

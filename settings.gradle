@@ -2,6 +2,7 @@ rootProject.name = 'toy-commerce-platform'
 
 include(
     ':app:commerce-api',
+    ':app:config-server',
     ':common:common-core',
     ':common:common-web',
     ':domain:member',

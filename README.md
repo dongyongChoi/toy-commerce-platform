@@ -8,6 +8,9 @@
 
 - `app/commerce-api`
   - 단일 실행 Spring Boot 애플리케이션
+- `app/config-server`
+  - Spring Cloud Config Server
+  - 로컬 학습용 native backend로 `commerce-api` 외부 설정 제공
 - `common/common-core`
   - 공통 예외, 에러 코드 같은 기본 규약
 - `common/common-web`
@@ -28,6 +31,7 @@
 ```mermaid
 flowchart LR
     Client["Client / Postman"] --> API["app:commerce-api<br/>Spring Boot"]
+    API -. config profile .-> CONFIG["app:config-server<br/>Spring Cloud Config Server"]
 
     API --> CC["common:common-core<br/>공통 예외 / 에러 코드"]
     API --> CW["common:common-web<br/>ApiResponse / GlobalExceptionHandler"]
@@ -45,6 +49,7 @@ flowchart LR
     ORDER --> CC
     INVENTORY --> CW
     INVENTORY --> CC
+    CONFIG --> CONFIG_REPO["classpath:/config-repo<br/>native backend"]
 ```
 
 ### 2. 실행 구조
@@ -74,6 +79,10 @@ flowchart TD
 
     ORM --> H2["H2<br/>local profile"]
     ORM -. 추후 전환 .-> MySQL["MySQL"]
+
+    ConfigClient["Spring Cloud Config Client<br/>config profile"]
+    ConfigClient -. optional import .-> ConfigServer["Config Server<br/>localhost:8888"]
+    ConfigServer --> ConfigRepo["Native Config Repo<br/>commerce-api.yml"]
 ```
 
 ### 3. 주문 이벤트 흐름
@@ -103,6 +112,7 @@ flowchart LR
 - Spring ApplicationEvent
 - Kafka Producer
 - Kafka Consumer
+- Spring Cloud Config
 
 ## 확장 방향
 
@@ -113,7 +123,7 @@ flowchart LR
 3. 주문 이벤트 발행 포트와 Spring ApplicationEvent 기반 확장 지점
 4. Kafka 주문 이벤트 발행
 5. Kafka 이벤트 구독
-6. Spring Cloud Config
+6. Spring Cloud Config 기반 설정 외부화
 7. MongoDB 감사 로그
 8. Oracle 레거시 정산 연동
 9. Docker, Kubernetes, Istio
@@ -138,6 +148,9 @@ flowchart LR
   - 주문 생성/취소 이벤트를 Kafka 토픽으로 발행합니다.
   - Spring 이벤트를 트랜잭션 커밋 이후 Kafka Producer로 전달합니다.
   - 주문 이벤트 토픽을 Kafka Consumer로 구독합니다.
+- `config`
+  - `commerce-api`가 Spring Cloud Config Server에서 외부 설정을 optional로 가져옵니다.
+  - Config Server가 없으면 로컬 기본 설정으로 계속 실행할 수 있습니다.
 
 프로필을 직접 조합할 때는 뒤에 적은 프로필이 앞의 설정을 덮어쓸 수 있으므로, 아래처럼 기반 프로필을 먼저 두고 교체 프로필을 뒤에 둡니다.
 
@@ -151,13 +164,16 @@ flowchart LR
 - `local-mysql-redis` = `local` + `mysql` + `redis`
 - `local-mysql-kafka` = `local` + `mysql` + `kafka`
 - `local-mysql-redis-kafka` = `local` + `mysql` + `redis` + `kafka`
+- `local-config` = `local` + `config`
+- `local-mysql-config` = `local` + `mysql` + `config`
+- `local-mysql-redis-kafka-config` = `local` + `mysql` + `redis` + `kafka` + `config`
 
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
-2. Spring Cloud Config로 환경 설정 외부화
-3. MongoDB 감사 로그 저장소 추가
-4. Kafka consumer에서 수신한 이벤트를 감사 로그나 알림 처리로 연결
+2. MongoDB 감사 로그 저장소 추가
+3. Kafka consumer에서 수신한 이벤트를 감사 로그나 알림 처리로 연결
+4. Config Server backend를 native에서 Git 저장소로 전환
 
 ## 로컬 실행
 
@@ -219,5 +235,35 @@ Kafka 토픽 이름은 `application-kafka.yml`에 정의되어 있습니다.
 
 - `toy-commerce.order.created`
 - `toy-commerce.order.cancelled`
+
+Spring Cloud Config를 확인하려면 먼저 Config Server를 실행합니다.
+
+```powershell
+.\gradlew.bat :app:config-server:bootRun
+```
+
+다른 터미널에서 `config` 프로필을 추가해 `commerce-api`를 실행합니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,config'
+```
+
+또는 profile group으로 실행할 수 있습니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-config'
+```
+
+Config Server에서 받은 설정은 아래 API로 확인할 수 있습니다.
+
+```powershell
+curl http://localhost:8080/api/v1/config
+```
+
+전체 로컬 인프라 조합은 아래처럼 실행할 수 있습니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis-kafka-config'
+```
 
 기본 접속 정보는 `.env.example`에 정리되어 있습니다. 개인 환경에서 값을 바꾸고 싶다면 `.env` 파일을 만들어 Docker Compose 환경 변수로 사용하면 됩니다.

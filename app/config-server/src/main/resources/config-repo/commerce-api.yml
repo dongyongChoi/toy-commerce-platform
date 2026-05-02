@@ -1,0 +1,4 @@
+toy-commerce:
+  config:
+    source: config-server
+    message: Spring Cloud Config에서 전달된 설정입니다.

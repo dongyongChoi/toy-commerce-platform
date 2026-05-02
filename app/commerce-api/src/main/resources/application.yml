@@ -1,6 +1,11 @@
 spring:
   application:
     name: commerce-api
+  cloud:
+    config:
+      enabled: false
+      import-check:
+        enabled: false
   profiles:
     default: local
     group:
@@ -20,6 +25,24 @@ spring:
         - mysql
         - redis
         - kafka
+      local-config:
+        - local
+        - config
+      local-mysql-config:
+        - local
+        - mysql
+        - config
+      local-mysql-redis-kafka-config:
+        - local
+        - mysql
+        - redis
+        - kafka
+        - config
+
+toy-commerce:
+  config:
+    source: local
+    message: 로컬 기본 설정입니다.
 
 management:
   endpoints:
