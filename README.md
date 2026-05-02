@@ -82,10 +82,12 @@ flowchart TD
 flowchart LR
     OrderService["OrderService<br/>주문 생성 / 취소"] --> EventPort["OrderEventPort<br/>이벤트 발행 포트"]
     EventPort --> SpringEventAdapter["SpringOrderEventPublisherAdapter<br/>Spring ApplicationEvent 발행"]
-    SpringEventAdapter -. 다음 단계 .-> Kafka["Kafka Producer<br/>주문 이벤트 토픽"]
+    SpringEventAdapter --> SpringEvent["Spring ApplicationEvent<br/>트랜잭션 커밋 후 처리"]
+    SpringEvent --> KafkaListener["KafkaOrderEventListener<br/>kafka profile"]
+    KafkaListener --> Kafka["Kafka<br/>주문 이벤트 토픽"]
 ```
 
-현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, 이후 Kafka 학습 단계에서는 Spring 이벤트를 받아 Kafka 토픽으로 전달하는 어댑터를 추가할 예정입니다.
+현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `kafka` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다.
 
 ## 현재 기술 스택
 
@@ -98,6 +100,7 @@ flowchart LR
 - MySQL
 - Redis Cache
 - Spring ApplicationEvent
+- Kafka Producer
 
 ## 확장 방향
 
@@ -106,13 +109,14 @@ flowchart LR
 1. MySQL, JPA 기반 CRUD 고도화
 2. Redis 캐시와 재고 보조 처리
 3. 주문 이벤트 발행 포트와 Spring ApplicationEvent 기반 확장 지점
-4. Spring Cloud Config
-5. Kafka 이벤트 발행과 구독
-6. MongoDB 감사 로그
-7. Oracle 레거시 정산 연동
-8. Docker, Kubernetes, Istio
-9. ELK, Prometheus, Thanos, Grafana
-10. GoCD 파이프라인
+4. Kafka 주문 이벤트 발행
+5. Spring Cloud Config
+6. Kafka 이벤트 구독
+7. MongoDB 감사 로그
+8. Oracle 레거시 정산 연동
+9. Docker, Kubernetes, Istio
+10. ELK, Prometheus, Thanos, Grafana
+11. GoCD 파이프라인
 
 ## 프로필 조합 전략
 
@@ -128,24 +132,29 @@ flowchart LR
 - `redis`
   - 캐시 구현을 Redis로 교체합니다.
   - `local`에서 꺼 둔 Redis health check를 다시 활성화합니다.
+- `kafka`
+  - 주문 생성/취소 이벤트를 Kafka 토픽으로 발행합니다.
+  - Spring 이벤트를 트랜잭션 커밋 이후 Kafka Producer로 전달합니다.
 
 프로필을 직접 조합할 때는 뒤에 적은 프로필이 앞의 설정을 덮어쓸 수 있으므로, 아래처럼 기반 프로필을 먼저 두고 교체 프로필을 뒤에 둡니다.
 
 ```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis'
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis,kafka'
 ```
 
 자주 쓰는 조합은 profile group으로도 제공합니다.
 
 - `local-mysql` = `local` + `mysql`
 - `local-mysql-redis` = `local` + `mysql` + `redis`
+- `local-mysql-kafka` = `local` + `mysql` + `kafka`
+- `local-mysql-redis-kafka` = `local` + `mysql` + `redis` + `kafka`
 
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
-2. `member`, `catalog`부터 실제 CRUD 확장
-3. `local`, `dev`, `prod` 설정 분리
-4. MySQL 프로필과 Docker Compose 추가
+2. Kafka 토픽에 발행된 주문 이벤트를 확인하는 consumer 추가
+3. Spring Cloud Config로 환경 설정 외부화
+4. MongoDB 감사 로그 저장소 추가
 
 ## 로컬 실행
 
@@ -186,5 +195,26 @@ docker compose up -d mysql redis
 ```powershell
 .\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis'
 ```
+
+Kafka 주문 이벤트 발행까지 확인하고 싶다면 Kafka도 함께 실행한 뒤 `kafka` 프로필을 추가합니다.
+
+```powershell
+docker compose up -d mysql redis kafka
+```
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis,kafka'
+```
+
+또는 profile group으로 실행할 수 있습니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis-kafka'
+```
+
+Kafka 토픽 이름은 `application-kafka.yml`에 정의되어 있습니다.
+
+- `toy-commerce.order.created`
+- `toy-commerce.order.cancelled`
 
 기본 접속 정보는 `.env.example`에 정리되어 있습니다. 개인 환경에서 값을 바꾸고 싶다면 `.env` 파일을 만들어 Docker Compose 환경 변수로 사용하면 됩니다.

@@ -31,6 +31,20 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("mysql");
         assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis[2]"))
             .isEqualTo("redis");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-kafka[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-kafka[1]"))
+            .isEqualTo("mysql");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-kafka[2]"))
+            .isEqualTo("kafka");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka[1]"))
+            .isEqualTo("mysql");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka[2]"))
+            .isEqualTo("redis");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka[3]"))
+            .isEqualTo("kafka");
     }
 
     @Test
@@ -82,6 +96,23 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("${REDIS_PORT:6379}");
         assertThat(propertySource.getProperty("management.health.redis.enabled"))
             .isEqualTo(true);
+    }
+
+    @Test
+    @DisplayName("kafka 프로필은 Kafka Producer와 주문 이벤트 토픽 설정을 제공한다")
+    void kafkaProfileContainsKafkaProducerAndTopicProperties() throws IOException {
+        PropertySource<?> propertySource = loadYamlPropertySource("application-kafka.yml");
+
+        assertThat(propertySource.getProperty("spring.kafka.bootstrap-servers"))
+            .isEqualTo("${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}");
+        assertThat(propertySource.getProperty("spring.kafka.producer.key-serializer"))
+            .isEqualTo("org.apache.kafka.common.serialization.StringSerializer");
+        assertThat(propertySource.getProperty("spring.kafka.producer.value-serializer"))
+            .isEqualTo("org.springframework.kafka.support.serializer.JsonSerializer");
+        assertThat(propertySource.getProperty("toy-commerce.kafka.topics.order-created"))
+            .isEqualTo("toy-commerce.order.created");
+        assertThat(propertySource.getProperty("toy-commerce.kafka.topics.order-cancelled"))
+            .isEqualTo("toy-commerce.order.cancelled");
     }
 
     private PropertySource<?> loadYamlPropertySource(String resourceName) throws IOException {

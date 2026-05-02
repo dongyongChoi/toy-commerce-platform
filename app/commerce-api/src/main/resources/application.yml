@@ -11,6 +11,15 @@ spring:
         - local
         - mysql
         - redis
+      local-mysql-kafka:
+        - local
+        - mysql
+        - kafka
+      local-mysql-redis-kafka:
+        - local
+        - mysql
+        - redis
+        - kafka
 
 management:
   endpoints:
