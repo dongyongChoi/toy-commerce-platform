@@ -15,6 +15,40 @@ class ApplicationProfileConfigurationTest {
     private final YamlPropertySourceLoader yamlPropertySourceLoader = new YamlPropertySourceLoader();
 
     @Test
+    @DisplayName("기본 설정은 조합형 로컬 프로필 그룹을 제공한다")
+    void defaultConfigurationContainsComposableLocalProfileGroups() throws IOException {
+        PropertySource<?> propertySource = loadYamlPropertySource("application.yml");
+
+        assertThat(propertySource.getProperty("spring.profiles.default"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql[1]"))
+            .isEqualTo("mysql");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis[1]"))
+            .isEqualTo("mysql");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis[2]"))
+            .isEqualTo("redis");
+    }
+
+    @Test
+    @DisplayName("local 프로필은 H2와 simple 캐시를 사용한다")
+    void localProfileContainsH2AndSimpleCacheProperties() throws IOException {
+        PropertySource<?> propertySource = loadYamlPropertySource("application-local.yml");
+
+        assertThat(propertySource.getProperty("spring.cache.type"))
+            .isEqualTo("simple");
+        assertThat(propertySource.getProperty("spring.datasource.url"))
+            .isEqualTo("jdbc:h2:mem:toycommerce;MODE=MySQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE");
+        assertThat(propertySource.getProperty("spring.datasource.driver-class-name"))
+            .isEqualTo("org.h2.Driver");
+        assertThat(propertySource.getProperty("management.health.redis.enabled"))
+            .isEqualTo(false);
+    }
+
+    @Test
     @DisplayName("mysql 프로필은 MySQL 데이터소스 설정을 제공한다")
     void mysqlProfileContainsMysqlDataSourceProperties() throws IOException {
         PropertySource<?> propertySource = loadYamlPropertySource("application-mysql.yml");
@@ -27,6 +61,8 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("${MYSQL_USER:toy_user}");
         assertThat(propertySource.getProperty("spring.jpa.hibernate.ddl-auto"))
             .isEqualTo("update");
+        assertThat(propertySource.getProperty("spring.cache.type"))
+            .isNull();
     }
 
     @Test
@@ -44,6 +80,8 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("${REDIS_HOST:localhost}");
         assertThat(propertySource.getProperty("spring.data.redis.port"))
             .isEqualTo("${REDIS_PORT:6379}");
+        assertThat(propertySource.getProperty("management.health.redis.enabled"))
+            .isEqualTo(true);
     }
 
     private PropertySource<?> loadYamlPropertySource(String resourceName) throws IOException {

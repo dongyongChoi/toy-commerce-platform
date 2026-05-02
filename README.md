@@ -84,7 +84,8 @@ flowchart TD
 - Spring MVC
 - Spring Data JPA / Hibernate
 - H2
-- MySQL 예정
+- MySQL
+- Redis Cache
 
 ## 확장 방향
 
@@ -100,6 +101,32 @@ flowchart TD
 8. ELK, Prometheus, Thanos, Grafana
 9. GoCD 파이프라인
 
+## 프로필 조합 전략
+
+이 프로젝트의 Spring profile은 하나만 선택하는 실행 모드가 아니라, 상황에 따라 여러 설정 조각을 조합하는 방식으로 사용합니다.
+
+- `local`
+  - 로컬 개발 공통 설정입니다.
+  - H2 인메모리 DB와 simple cache를 사용합니다.
+  - Redis를 사용하지 않는 로컬 실행에서 Redis health check가 Redis 서버를 찾지 않도록 비활성화합니다.
+- `mysql`
+  - datasource를 MySQL로 교체합니다.
+  - 캐시 설정은 바꾸지 않으므로 보통 `local,mysql`처럼 함께 사용합니다.
+- `redis`
+  - 캐시 구현을 Redis로 교체합니다.
+  - `local`에서 꺼 둔 Redis health check를 다시 활성화합니다.
+
+프로필을 직접 조합할 때는 뒤에 적은 프로필이 앞의 설정을 덮어쓸 수 있으므로, 아래처럼 기반 프로필을 먼저 두고 교체 프로필을 뒤에 둡니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis'
+```
+
+자주 쓰는 조합은 profile group으로도 제공합니다.
+
+- `local-mysql` = `local` + `mysql`
+- `local-mysql-redis` = `local` + `mysql` + `redis`
+
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
@@ -107,16 +134,44 @@ flowchart TD
 3. `local`, `dev`, `prod` 설정 분리
 4. MySQL 프로필과 Docker Compose 추가
 
-## 로컬 MySQL 실행
+## 로컬 실행
 
-Docker Compose로 MySQL을 실행한 뒤 `mysql` 프로필로 애플리케이션을 실행할 수 있습니다.
+아무 프로필도 지정하지 않으면 `local` 프로필이 기본으로 적용됩니다. 이 경우 H2와 simple cache를 사용합니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun
+```
+
+Docker Compose로 MySQL을 실행한 뒤 `local,mysql` 조합으로 애플리케이션을 실행할 수 있습니다.
 
 ```powershell
 docker compose up -d mysql
 ```
 
 ```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=mysql'
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql'
+```
+
+profile group을 사용하면 아래처럼 실행할 수도 있습니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql'
+```
+
+Redis 캐시까지 함께 확인하고 싶다면 MySQL과 Redis를 함께 실행한 뒤 `local,mysql,redis` 조합을 사용합니다.
+
+```powershell
+docker compose up -d mysql redis
+```
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis'
+```
+
+또는 profile group으로 실행할 수 있습니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis'
 ```
 
 기본 접속 정보는 `.env.example`에 정리되어 있습니다. 개인 환경에서 값을 바꾸고 싶다면 `.env` 파일을 만들어 Docker Compose 환경 변수로 사용하면 됩니다.

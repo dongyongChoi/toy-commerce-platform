@@ -11,3 +11,8 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       timeout: 2s
+
+management:
+  health:
+    redis:
+      enabled: true

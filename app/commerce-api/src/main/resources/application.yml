@@ -3,10 +3,17 @@ spring:
     name: commerce-api
   profiles:
     default: local
+    group:
+      local-mysql:
+        - local
+        - mysql
+      local-mysql-redis:
+        - local
+        - mysql
+        - redis
 
 management:
   endpoints:
     web:
       exposure:
         include: health,info
-
