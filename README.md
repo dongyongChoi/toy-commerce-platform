@@ -76,6 +76,17 @@ flowchart TD
     ORM -. 추후 전환 .-> MySQL["MySQL"]
 ```
 
+### 3. 주문 이벤트 흐름
+
+```mermaid
+flowchart LR
+    OrderService["OrderService<br/>주문 생성 / 취소"] --> EventPort["OrderEventPort<br/>이벤트 발행 포트"]
+    EventPort --> SpringEventAdapter["SpringOrderEventPublisherAdapter<br/>Spring ApplicationEvent 발행"]
+    SpringEventAdapter -. 다음 단계 .-> Kafka["Kafka Producer<br/>주문 이벤트 토픽"]
+```
+
+현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, 이후 Kafka 학습 단계에서는 Spring 이벤트를 받아 Kafka 토픽으로 전달하는 어댑터를 추가할 예정입니다.
+
 ## 현재 기술 스택
 
 - Java
@@ -86,6 +97,7 @@ flowchart TD
 - H2
 - MySQL
 - Redis Cache
+- Spring ApplicationEvent
 
 ## 확장 방향
 
@@ -93,13 +105,14 @@ flowchart TD
 
 1. MySQL, JPA 기반 CRUD 고도화
 2. Redis 캐시와 재고 보조 처리
-3. Spring Cloud Config
-4. Kafka 이벤트 발행과 구독
-5. MongoDB 감사 로그
-6. Oracle 레거시 정산 연동
-7. Docker, Kubernetes, Istio
-8. ELK, Prometheus, Thanos, Grafana
-9. GoCD 파이프라인
+3. 주문 이벤트 발행 포트와 Spring ApplicationEvent 기반 확장 지점
+4. Spring Cloud Config
+5. Kafka 이벤트 발행과 구독
+6. MongoDB 감사 로그
+7. Oracle 레거시 정산 연동
+8. Docker, Kubernetes, Istio
+9. ELK, Prometheus, Thanos, Grafana
+10. GoCD 파이프라인
 
 ## 프로필 조합 전략
 

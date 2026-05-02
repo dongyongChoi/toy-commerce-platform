@@ -2,7 +2,10 @@ package com.toyproject.order.application;
 
 import com.toyproject.common.core.DomainException;
 import com.toyproject.common.core.ErrorCode;
+import com.toyproject.order.application.event.OrderCancelledEvent;
+import com.toyproject.order.application.event.OrderCreatedEvent;
 import com.toyproject.order.application.port.MemberPort;
+import com.toyproject.order.application.port.OrderEventPort;
 import com.toyproject.order.application.port.ProductPort;
 import com.toyproject.order.application.port.StockPort;
 import com.toyproject.order.domain.PurchaseOrder;
@@ -23,6 +26,7 @@ public class OrderService {
     private final MemberPort memberPort;
     private final ProductPort productPort;
     private final StockPort stockPort;
+    private final OrderEventPort orderEventPort;
 
     public List<OrderResponse> getOrders() {
         return purchaseOrderRepository.findAll()
@@ -50,6 +54,7 @@ public class OrderService {
         PurchaseOrder order = purchaseOrderRepository.save(
             new PurchaseOrder(request.memberId(), request.productId(), request.quantity(), request.totalPrice())
         );
+        orderEventPort.publishOrderCreated(OrderCreatedEvent.from(order));
         return OrderResponse.from(order);
     }
 
@@ -67,6 +72,7 @@ public class OrderService {
             .orElseThrow(() -> new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "주문을 찾을 수 없습니다."));
         order.cancel();
         stockPort.restore(order.getProductId(), order.getQuantity());
+        orderEventPort.publishOrderCancelled(OrderCancelledEvent.from(order));
         return OrderResponse.from(order);
     }
 }

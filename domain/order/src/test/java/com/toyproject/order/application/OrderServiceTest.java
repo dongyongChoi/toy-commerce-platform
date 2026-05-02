@@ -1,7 +1,10 @@
 package com.toyproject.order.application;
 
 import com.toyproject.common.core.DomainException;
+import com.toyproject.order.application.event.OrderCancelledEvent;
+import com.toyproject.order.application.event.OrderCreatedEvent;
 import com.toyproject.order.application.port.MemberPort;
+import com.toyproject.order.application.port.OrderEventPort;
 import com.toyproject.order.application.port.ProductPort;
 import com.toyproject.order.application.port.StockPort;
 import com.toyproject.order.domain.PurchaseOrder;
@@ -39,12 +42,18 @@ class OrderServiceTest {
     private ProductPort productPort;
     @Mock
     private StockPort stockPort;
+    @Mock
+    private OrderEventPort orderEventPort;
 
     @InjectMocks
     private OrderService orderService;
 
     @Captor
     private ArgumentCaptor<PurchaseOrder> orderCaptor;
+    @Captor
+    private ArgumentCaptor<OrderCreatedEvent> orderCreatedEventCaptor;
+    @Captor
+    private ArgumentCaptor<OrderCancelledEvent> orderCancelledEventCaptor;
 
     @Test
     @DisplayName("주문 목록을 조회하면 주문 응답 목록으로 변환해 반환한다")
@@ -87,8 +96,8 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("주문을 생성하면 재고를 차감하고 저장된 주문을 반환한다")
-    void createOrder_savesOrderAndDeductsStock() {
+    @DisplayName("주문을 생성하면 재고를 차감하고 주문 생성 이벤트를 발행한다")
+    void createOrder_savesOrder_deductsStock_andPublishesEvent() {
         CreateOrderRequest request = new CreateOrderRequest(1L, 10L, 2, BigDecimal.valueOf(20000));
         given(memberPort.exists(1L)).willReturn(true);
         given(productPort.exists(10L)).willReturn(true);
@@ -103,12 +112,19 @@ class OrderServiceTest {
 
         then(stockPort).should().deduct(10L, 2);
         then(purchaseOrderRepository).should().save(orderCaptor.capture());
+        then(orderEventPort).should().publishOrderCreated(orderCreatedEventCaptor.capture());
         PurchaseOrder savedOrder = orderCaptor.getValue();
         assertThat(savedOrder.getMemberId()).isEqualTo(1L);
         assertThat(savedOrder.getProductId()).isEqualTo(10L);
         assertThat(savedOrder.getQuantity()).isEqualTo(2);
         assertThat(savedOrder.getTotalPrice()).isEqualByComparingTo("20000");
         assertThat(savedOrder.getStatus()).isEqualTo("CREATED");
+        OrderCreatedEvent event = orderCreatedEventCaptor.getValue();
+        assertThat(event.orderId()).isEqualTo(1L);
+        assertThat(event.memberId()).isEqualTo(1L);
+        assertThat(event.productId()).isEqualTo(10L);
+        assertThat(event.quantity()).isEqualTo(2);
+        assertThat(event.totalPrice()).isEqualByComparingTo("20000");
         assertThat(result).isEqualTo(new OrderResponse(1L, 1L, 10L, 2, BigDecimal.valueOf(20000), "CREATED"));
     }
 
@@ -123,6 +139,7 @@ class OrderServiceTest {
             .hasMessage("회원을 찾을 수 없습니다.");
 
         then(purchaseOrderRepository).shouldHaveNoInteractions();
+        then(orderEventPort).shouldHaveNoInteractions();
     }
 
     @Test
@@ -137,6 +154,7 @@ class OrderServiceTest {
             .hasMessage("상품을 찾을 수 없습니다.");
 
         then(purchaseOrderRepository).shouldHaveNoInteractions();
+        then(orderEventPort).shouldHaveNoInteractions();
     }
 
     @Test
@@ -162,8 +180,8 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("주문을 취소하면 CANCELLED 상태로 전환되고 재고가 복구된다")
-    void cancelOrder_transitionsToCancelled_andRestoresStock() {
+    @DisplayName("주문을 취소하면 재고를 복구하고 주문 취소 이벤트를 발행한다")
+    void cancelOrder_transitionsToCancelled_restoresStock_andPublishesEvent() {
         PurchaseOrder order = new PurchaseOrder(1L, 10L, 2, BigDecimal.valueOf(20000));
         ReflectionTestUtils.setField(order, "id", 1L);
         given(purchaseOrderRepository.findById(1L)).willReturn(Optional.of(order));
@@ -173,6 +191,13 @@ class OrderServiceTest {
 
         assertThat(result.status()).isEqualTo("CANCELLED");
         then(stockPort).should().restore(10L, 2);
+        then(orderEventPort).should().publishOrderCancelled(orderCancelledEventCaptor.capture());
+        OrderCancelledEvent event = orderCancelledEventCaptor.getValue();
+        assertThat(event.orderId()).isEqualTo(1L);
+        assertThat(event.memberId()).isEqualTo(1L);
+        assertThat(event.productId()).isEqualTo(10L);
+        assertThat(event.quantity()).isEqualTo(2);
+        assertThat(event.totalPrice()).isEqualByComparingTo("20000");
     }
 
     @Test
@@ -183,5 +208,7 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.cancelOrder(99L))
             .isInstanceOf(DomainException.class)
             .hasMessage("주문을 찾을 수 없습니다.");
+
+        then(orderEventPort).shouldHaveNoInteractions();
     }
 }
