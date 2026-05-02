@@ -85,9 +85,10 @@ flowchart LR
     SpringEventAdapter --> SpringEvent["Spring ApplicationEvent<br/>트랜잭션 커밋 후 처리"]
     SpringEvent --> KafkaListener["KafkaOrderEventListener<br/>kafka profile"]
     KafkaListener --> Kafka["Kafka<br/>주문 이벤트 토픽"]
+    Kafka --> KafkaConsumer["KafkaOrderEventConsumer<br/>주문 이벤트 구독"]
 ```
 
-현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `kafka` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다.
+현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `kafka` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다. 같은 프로필에서 `KafkaOrderEventConsumer`가 주문 이벤트 토픽을 구독해 수신 로그를 남깁니다.
 
 ## 현재 기술 스택
 
@@ -101,6 +102,7 @@ flowchart LR
 - Redis Cache
 - Spring ApplicationEvent
 - Kafka Producer
+- Kafka Consumer
 
 ## 확장 방향
 
@@ -110,8 +112,8 @@ flowchart LR
 2. Redis 캐시와 재고 보조 처리
 3. 주문 이벤트 발행 포트와 Spring ApplicationEvent 기반 확장 지점
 4. Kafka 주문 이벤트 발행
-5. Spring Cloud Config
-6. Kafka 이벤트 구독
+5. Kafka 이벤트 구독
+6. Spring Cloud Config
 7. MongoDB 감사 로그
 8. Oracle 레거시 정산 연동
 9. Docker, Kubernetes, Istio
@@ -135,6 +137,7 @@ flowchart LR
 - `kafka`
   - 주문 생성/취소 이벤트를 Kafka 토픽으로 발행합니다.
   - Spring 이벤트를 트랜잭션 커밋 이후 Kafka Producer로 전달합니다.
+  - 주문 이벤트 토픽을 Kafka Consumer로 구독합니다.
 
 프로필을 직접 조합할 때는 뒤에 적은 프로필이 앞의 설정을 덮어쓸 수 있으므로, 아래처럼 기반 프로필을 먼저 두고 교체 프로필을 뒤에 둡니다.
 
@@ -152,9 +155,9 @@ flowchart LR
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
-2. Kafka 토픽에 발행된 주문 이벤트를 확인하는 consumer 추가
-3. Spring Cloud Config로 환경 설정 외부화
-4. MongoDB 감사 로그 저장소 추가
+2. Spring Cloud Config로 환경 설정 외부화
+3. MongoDB 감사 로그 저장소 추가
+4. Kafka consumer에서 수신한 이벤트를 감사 로그나 알림 처리로 연결
 
 ## 로컬 실행
 

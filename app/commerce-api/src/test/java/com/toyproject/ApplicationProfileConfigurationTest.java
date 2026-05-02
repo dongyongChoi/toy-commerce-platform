@@ -105,6 +105,14 @@ class ApplicationProfileConfigurationTest {
 
         assertThat(propertySource.getProperty("spring.kafka.bootstrap-servers"))
             .isEqualTo("${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}");
+        assertThat(propertySource.getProperty("spring.kafka.consumer.group-id"))
+            .isEqualTo("${KAFKA_CONSUMER_GROUP_ID:toy-commerce-order-event-consumer}");
+        assertThat(propertySource.getProperty("spring.kafka.consumer.key-deserializer"))
+            .isEqualTo("org.apache.kafka.common.serialization.StringDeserializer");
+        assertThat(propertySource.getProperty("spring.kafka.consumer.value-deserializer"))
+            .isEqualTo("org.springframework.kafka.support.serializer.JsonDeserializer");
+        assertThat(propertySource.getProperty("spring.kafka.consumer.properties.spring.json.trusted.packages"))
+            .isEqualTo("com.toyproject.order.application.event");
         assertThat(propertySource.getProperty("spring.kafka.producer.key-serializer"))
             .isEqualTo("org.apache.kafka.common.serialization.StringSerializer");
         assertThat(propertySource.getProperty("spring.kafka.producer.value-serializer"))
