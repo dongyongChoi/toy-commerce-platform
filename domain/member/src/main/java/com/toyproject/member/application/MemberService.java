@@ -7,19 +7,17 @@ import com.toyproject.member.domain.MemberRepository;
 import com.toyproject.member.web.dto.CreateMemberRequest;
 import com.toyproject.member.web.dto.MemberResponse;
 import com.toyproject.member.web.dto.UpdateMemberRequest;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 @Service
 @Transactional(readOnly = true)
 public class MemberService {
     private final MemberRepository memberRepository;
-
-    public MemberService(MemberRepository memberRepository) {
-        this.memberRepository = memberRepository;
-    }
 
     public List<MemberResponse> getMembers() {
         return memberRepository.findAll()
@@ -56,4 +54,3 @@ public class MemberService {
             .orElseThrow(() -> new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "member not found"));
     }
 }
-

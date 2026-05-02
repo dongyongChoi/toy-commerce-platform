@@ -6,18 +6,17 @@ import com.toyproject.inventory.domain.StockItem;
 import com.toyproject.inventory.domain.StockItemRepository;
 import com.toyproject.inventory.web.dto.StockItemResponse;
 import com.toyproject.inventory.web.dto.UpsertStockRequest;
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
+@RequiredArgsConstructor
 @Service
 @Transactional(readOnly = true)
 public class InventoryService {
     private final StockItemRepository stockItemRepository;
-
-    public InventoryService(StockItemRepository stockItemRepository) {
-        this.stockItemRepository = stockItemRepository;
-    }
 
     public List<StockItemResponse> getInventory() {
         return stockItemRepository.findAll()
@@ -41,5 +40,25 @@ public class InventoryService {
 
         return StockItemResponse.from(stockItemRepository.save(stockItem));
     }
-}
 
+    @Transactional
+    public void deductStock(Long productId, int quantity) {
+        StockItem stockItem = stockItemRepository.findByProductId(productId);
+        if (stockItem == null) {
+            throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "재고 정보가 없습니다.");
+        }
+        if (stockItem.getQuantity() < quantity) {
+            throw new DomainException(ErrorCode.INVALID_INPUT, "재고가 부족합니다.");
+        }
+        stockItem.updateQuantity(stockItem.getQuantity() - quantity);
+    }
+
+    @Transactional
+    public void restoreStock(Long productId, int quantity) {
+        StockItem stockItem = stockItemRepository.findByProductId(productId);
+        if (stockItem == null) {
+            throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "재고 정보가 없습니다.");
+        }
+        stockItem.updateQuantity(stockItem.getQuantity() + quantity);
+    }
+}

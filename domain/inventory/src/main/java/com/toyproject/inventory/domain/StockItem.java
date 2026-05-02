@@ -1,12 +1,12 @@
 package com.toyproject.inventory.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "stock_items")
 public class StockItem {
@@ -20,28 +20,12 @@ public class StockItem {
     @Column(nullable = false)
     private int quantity;
 
-    protected StockItem() {
-    }
-
     public StockItem(Long productId, int quantity) {
         this.productId = productId;
         this.quantity = quantity;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public Long getProductId() {
-        return productId;
-    }
-
-    public int getQuantity() {
-        return quantity;
     }
 
     public void updateQuantity(int quantity) {
         this.quantity = quantity;
     }
 }
-

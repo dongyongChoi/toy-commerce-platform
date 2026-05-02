@@ -97,4 +97,59 @@ class InventoryServiceTest {
 
         then(stockItemRepository).shouldHaveNoInteractions();
     }
+
+    @Test
+    @DisplayName("재고 차감 시 현재 수량에서 요청 수량만큼 차감된다")
+    void deductStock_reducesQuantityByRequestedAmount() {
+        StockItem stockItem = new StockItem(10L, 50);
+        ReflectionTestUtils.setField(stockItem, "id", 1L);
+        given(stockItemRepository.findByProductId(10L)).willReturn(stockItem);
+
+        inventoryService.deductStock(10L, 10);
+
+        assertThat(stockItem.getQuantity()).isEqualTo(40);
+    }
+
+    @Test
+    @DisplayName("재고가 부족하면 차감 시 예외가 발생한다")
+    void deductStock_whenInsufficientStock_throwsDomainException() {
+        StockItem stockItem = new StockItem(10L, 5);
+        given(stockItemRepository.findByProductId(10L)).willReturn(stockItem);
+
+        assertThatThrownBy(() -> inventoryService.deductStock(10L, 10))
+            .isInstanceOf(DomainException.class)
+            .hasMessage("재고가 부족합니다.");
+    }
+
+    @Test
+    @DisplayName("재고 정보가 없으면 차감 시 예외가 발생한다")
+    void deductStock_whenStockNotFound_throwsDomainException() {
+        given(stockItemRepository.findByProductId(10L)).willReturn(null);
+
+        assertThatThrownBy(() -> inventoryService.deductStock(10L, 5))
+            .isInstanceOf(DomainException.class)
+            .hasMessage("재고 정보가 없습니다.");
+    }
+
+    @Test
+    @DisplayName("재고 복구 시 현재 수량에 요청 수량만큼 증가한다")
+    void restoreStock_increasesQuantityByRequestedAmount() {
+        StockItem stockItem = new StockItem(10L, 30);
+        ReflectionTestUtils.setField(stockItem, "id", 1L);
+        given(stockItemRepository.findByProductId(10L)).willReturn(stockItem);
+
+        inventoryService.restoreStock(10L, 5);
+
+        assertThat(stockItem.getQuantity()).isEqualTo(35);
+    }
+
+    @Test
+    @DisplayName("재고 정보가 없으면 복구 시 예외가 발생한다")
+    void restoreStock_whenStockNotFound_throwsDomainException() {
+        given(stockItemRepository.findByProductId(10L)).willReturn(null);
+
+        assertThatThrownBy(() -> inventoryService.restoreStock(10L, 5))
+            .isInstanceOf(DomainException.class)
+            .hasMessage("재고 정보가 없습니다.");
+    }
 }

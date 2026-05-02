@@ -7,6 +7,7 @@ import com.toyproject.catalog.web.dto.ProductResponse;
 import com.toyproject.catalog.web.dto.UpdateProductRequest;
 import com.toyproject.common.core.DomainException;
 import com.toyproject.common.core.ErrorCode;
+import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -14,14 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+@RequiredArgsConstructor
 @Service
 @Transactional(readOnly = true)
 public class ProductService {
     private final ProductRepository productRepository;
-
-    public ProductService(ProductRepository productRepository) {
-        this.productRepository = productRepository;
-    }
 
     @Cacheable(cacheNames = "products", key = "'all'")
     public List<ProductResponse> getProducts() {

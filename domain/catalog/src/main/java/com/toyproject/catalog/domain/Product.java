@@ -1,9 +1,14 @@
 package com.toyproject.catalog.domain;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "products")
 public class Product {
@@ -17,9 +22,6 @@ public class Product {
     @Column(nullable = false, precision = 19, scale = 2)
     private BigDecimal price;
 
-    protected Product() {
-    }
-
     public Product(String name, BigDecimal price) {
         this.name = name;
         this.price = price;
@@ -29,17 +31,4 @@ public class Product {
         this.name = name;
         this.price = price;
     }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public BigDecimal getPrice() {
-        return price;
-    }
 }
-

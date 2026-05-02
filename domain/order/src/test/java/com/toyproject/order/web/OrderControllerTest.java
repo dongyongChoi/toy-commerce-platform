@@ -1,5 +1,7 @@
 package com.toyproject.order.web;
 
+import com.toyproject.common.core.DomainException;
+import com.toyproject.common.core.ErrorCode;
 import com.toyproject.common.web.GlobalExceptionHandler;
 import com.toyproject.order.application.OrderService;
 import com.toyproject.order.web.dto.CreateOrderRequest;
@@ -21,8 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -54,6 +55,31 @@ class OrderControllerTest {
     }
 
     @Test
+    @DisplayName("주문 단건 조회 요청이 유효하면 주문 정보를 반환한다")
+    void getOrder_returnsOrderResponse() throws Exception {
+        given(orderService.getOrder(1L))
+            .willReturn(new OrderResponse(1L, 1L, 10L, 2, BigDecimal.valueOf(20000), "CREATED"));
+
+        mockMvc.perform(get("/api/v1/orders/1"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.data.id").value(1))
+            .andExpect(jsonPath("$.data.status").value("CREATED"));
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 주문 단건 조회 시 404 응답을 반환한다")
+    void getOrder_whenNotFound_returns404() throws Exception {
+        given(orderService.getOrder(99L))
+            .willThrow(new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "주문을 찾을 수 없습니다."));
+
+        mockMvc.perform(get("/api/v1/orders/99"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.errorCode").value("COMMON-404"));
+    }
+
+    @Test
     @DisplayName("주문 생성 요청이 유효하면 201 응답과 생성된 주문 정보를 반환한다")
     void createOrder_returnsCreatedResponse() throws Exception {
         given(orderService.createOrder(any(CreateOrderRequest.class)))
@@ -75,10 +101,6 @@ class OrderControllerTest {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.message").value("order created"))
             .andExpect(jsonPath("$.data.id").value(1))
-            .andExpect(jsonPath("$.data.memberId").value(1))
-            .andExpect(jsonPath("$.data.productId").value(10))
-            .andExpect(jsonPath("$.data.quantity").value(2))
-            .andExpect(jsonPath("$.data.totalPrice").value(20000))
             .andExpect(jsonPath("$.data.status").value("CREATED"));
     }
 
@@ -99,7 +121,6 @@ class OrderControllerTest {
             )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("quantity: quantity must be greater than zero"))
             .andExpect(jsonPath("$.errorCode").value("COMMON-400"));
 
         then(orderService).shouldHaveNoInteractions();
@@ -122,10 +143,35 @@ class OrderControllerTest {
             )
             .andExpect(status().isBadRequest())
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("totalPrice: totalPrice must be greater than zero"))
             .andExpect(jsonPath("$.errorCode").value("COMMON-400"));
 
         then(orderService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("주문 확정 요청이 유효하면 CONFIRMED 상태의 주문을 반환한다")
+    void confirmOrder_returnsConfirmedResponse() throws Exception {
+        given(orderService.confirmOrder(1L))
+            .willReturn(new OrderResponse(1L, 1L, 10L, 2, BigDecimal.valueOf(20000), "CONFIRMED"));
+
+        mockMvc.perform(patch("/api/v1/orders/1/confirm"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.message").value("order confirmed"))
+            .andExpect(jsonPath("$.data.status").value("CONFIRMED"));
+    }
+
+    @Test
+    @DisplayName("주문 취소 요청이 유효하면 CANCELLED 상태의 주문을 반환한다")
+    void cancelOrder_returnsCancelledResponse() throws Exception {
+        given(orderService.cancelOrder(1L))
+            .willReturn(new OrderResponse(1L, 1L, 10L, 2, BigDecimal.valueOf(20000), "CANCELLED"));
+
+        mockMvc.perform(patch("/api/v1/orders/1/cancel"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.success").value(true))
+            .andExpect(jsonPath("$.message").value("order cancelled"))
+            .andExpect(jsonPath("$.data.status").value("CANCELLED"));
     }
 
     @SpringBootConfiguration

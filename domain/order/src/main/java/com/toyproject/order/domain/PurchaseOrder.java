@@ -1,13 +1,16 @@
 package com.toyproject.order.domain;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.toyproject.common.core.DomainException;
+import com.toyproject.common.core.ErrorCode;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
 import java.math.BigDecimal;
 
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "purchase_orders")
 public class PurchaseOrder {
@@ -30,9 +33,6 @@ public class PurchaseOrder {
     @Column(nullable = false)
     private String status;
 
-    protected PurchaseOrder() {
-    }
-
     public PurchaseOrder(Long memberId, Long productId, int quantity, BigDecimal totalPrice) {
         this.memberId = memberId;
         this.productId = productId;
@@ -41,28 +41,17 @@ public class PurchaseOrder {
         this.status = "CREATED";
     }
 
-    public Long getId() {
-        return id;
+    public void confirm() {
+        if (!"CREATED".equals(this.status)) {
+            throw new DomainException(ErrorCode.INVALID_INPUT, "주문 확정은 CREATED 상태에서만 가능합니다.");
+        }
+        this.status = "CONFIRMED";
     }
 
-    public Long getMemberId() {
-        return memberId;
-    }
-
-    public Long getProductId() {
-        return productId;
-    }
-
-    public int getQuantity() {
-        return quantity;
-    }
-
-    public BigDecimal getTotalPrice() {
-        return totalPrice;
-    }
-
-    public String getStatus() {
-        return status;
+    public void cancel() {
+        if ("CANCELLED".equals(this.status)) {
+            throw new DomainException(ErrorCode.INVALID_INPUT, "이미 취소된 주문입니다.");
+        }
+        this.status = "CANCELLED";
     }
 }
-

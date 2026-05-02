@@ -5,14 +5,10 @@ import com.toyproject.order.application.OrderService;
 import com.toyproject.order.web.dto.CreateOrderRequest;
 import com.toyproject.order.web.dto.OrderResponse;
 import jakarta.validation.Valid;
-import java.util.List;
 import org.springframework.http.HttpStatus;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/orders")
@@ -28,10 +24,24 @@ public class OrderController {
         return ApiResponse.success(orderService.getOrders());
     }
 
+    @GetMapping("/{orderId}")
+    public ApiResponse<OrderResponse> getOrder(@PathVariable Long orderId) {
+        return ApiResponse.success(orderService.getOrder(orderId));
+    }
+
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<OrderResponse> createOrder(@Valid @RequestBody CreateOrderRequest request) {
         return ApiResponse.success(orderService.createOrder(request), "order created");
     }
-}
 
+    @PatchMapping("/{orderId}/confirm")
+    public ApiResponse<OrderResponse> confirmOrder(@PathVariable Long orderId) {
+        return ApiResponse.success(orderService.confirmOrder(orderId), "order confirmed");
+    }
+
+    @PatchMapping("/{orderId}/cancel")
+    public ApiResponse<OrderResponse> cancelOrder(@PathVariable Long orderId) {
+        return ApiResponse.success(orderService.cancelOrder(orderId), "order cancelled");
+    }
+}

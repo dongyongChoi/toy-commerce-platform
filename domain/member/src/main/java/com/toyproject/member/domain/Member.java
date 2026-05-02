@@ -1,7 +1,12 @@
 package com.toyproject.member.domain;
 
 import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
 
+@Getter
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Entity
 @Table(name = "members")
 public class Member {
@@ -15,9 +20,6 @@ public class Member {
     @Column(nullable = false, unique = true)
     private String email;
 
-    protected Member() {
-    }
-
     public Member(String name, String email) {
         this.name = name;
         this.email = email;
@@ -27,17 +29,4 @@ public class Member {
         this.name = name;
         this.email = email;
     }
-
-    public Long getId() {
-        return id;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public String getEmail() {
-        return email;
-    }
 }
-
