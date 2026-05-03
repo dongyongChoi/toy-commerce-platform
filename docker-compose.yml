@@ -61,7 +61,23 @@ services:
     volumes:
       - kafka-data:/var/lib/kafka/data
 
+  mongo:
+    image: mongo:7.0
+    container_name: toy-commerce-mongo
+    ports:
+      - "${MONGODB_PORT:-27017}:27017"
+    environment:
+      MONGO_INITDB_DATABASE: ${MONGODB_DATABASE:-toy_commerce}
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - mongo-data:/data/db
+
 volumes:
   mysql-data:
   redis-data:
   kafka-data:
+  mongo-data:

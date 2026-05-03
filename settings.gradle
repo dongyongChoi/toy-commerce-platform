@@ -9,4 +9,5 @@ include(
     ':domain:catalog',
     ':domain:order',
     ':domain:inventory',
+    ':domain:audit',
 )

@@ -45,6 +45,20 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("redis");
         assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka[3]"))
             .isEqualTo("kafka");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mongo[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mongo[1]"))
+            .isEqualTo("mongo");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo[1]"))
+            .isEqualTo("mysql");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo[2]"))
+            .isEqualTo("redis");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo[3]"))
+            .isEqualTo("kafka");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo[4]"))
+            .isEqualTo("mongo");
         assertThat(propertySource.getProperty("spring.profiles.group.local-config[0]"))
             .isEqualTo("local");
         assertThat(propertySource.getProperty("spring.profiles.group.local-config[1]"))
@@ -64,6 +78,18 @@ class ApplicationProfileConfigurationTest {
         assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-config[3]"))
             .isEqualTo("kafka");
         assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-config[4]"))
+            .isEqualTo("config");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo-config[0]"))
+            .isEqualTo("local");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo-config[1]"))
+            .isEqualTo("mysql");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo-config[2]"))
+            .isEqualTo("redis");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo-config[3]"))
+            .isEqualTo("kafka");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo-config[4]"))
+            .isEqualTo("mongo");
+        assertThat(propertySource.getProperty("spring.profiles.group.local-mysql-redis-kafka-mongo-config[5]"))
             .isEqualTo("config");
         assertThat(propertySource.getProperty("spring.cloud.config.enabled"))
             .isEqualTo(false);
@@ -160,6 +186,17 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("commerce-api");
         assertThat(propertySource.getProperty("spring.cloud.config.fail-fast"))
             .isEqualTo(false);
+    }
+
+    @Test
+    @DisplayName("mongo 프로필은 MongoDB 접속 설정을 제공한다")
+    void mongoProfileContainsMongoDbProperties() throws IOException {
+        PropertySource<?> propertySource = loadYamlPropertySource("application-mongo.yml");
+
+        assertThat(propertySource.getProperty("spring.data.mongodb.uri"))
+            .isEqualTo("${MONGODB_URI:mongodb://localhost:27017/toy_commerce}");
+        assertThat(propertySource.getProperty("management.health.mongo.enabled"))
+            .isEqualTo(true);
     }
 
     private PropertySource<?> loadYamlPropertySource(String resourceName) throws IOException {

@@ -1,28 +1,48 @@
 package com.toyproject.order.adapter;
 
+import com.toyproject.audit.application.AuditLogService;
 import com.toyproject.order.application.event.OrderCancelledEvent;
 import com.toyproject.order.application.event.OrderCreatedEvent;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.math.BigDecimal;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 
 @ExtendWith(OutputCaptureExtension.class)
+@ExtendWith(MockitoExtension.class)
 class KafkaOrderEventConsumerTest {
-    private final KafkaOrderEventConsumer consumer = new KafkaOrderEventConsumer();
+    @Mock
+    private ObjectProvider<AuditLogService> auditLogServiceProvider;
+    @Mock
+    private AuditLogService auditLogService;
+
+    private KafkaOrderEventConsumer consumer;
+
+    @BeforeEach
+    void setUp() {
+        consumer = new KafkaOrderEventConsumer(auditLogServiceProvider);
+    }
 
     @Test
-    @DisplayName("Kafka 주문 생성 이벤트를 수신하면 처리 로그를 남긴다")
-    void consumeOrderCreated_logsReceivedEvent(CapturedOutput output) {
+    @DisplayName("Kafka 주문 생성 이벤트를 수신하면 감사 로그를 저장하고 처리 로그를 남긴다")
+    void consumeOrderCreated_recordsAuditLogAndLogsReceivedEvent(CapturedOutput output) {
         OrderCreatedEvent event = new OrderCreatedEvent(1L, 2L, 3L, 4, BigDecimal.valueOf(40000));
+        given(auditLogServiceProvider.getIfAvailable()).willReturn(auditLogService);
 
         consumer.consumeOrderCreated(event);
 
+        then(auditLogService).should().recordOrderCreated(event);
         assertThat(output)
             .contains("주문 생성 이벤트를 수신했습니다.")
             .contains("orderId=1")
@@ -32,12 +52,14 @@ class KafkaOrderEventConsumerTest {
     }
 
     @Test
-    @DisplayName("Kafka 주문 취소 이벤트를 수신하면 처리 로그를 남긴다")
-    void consumeOrderCancelled_logsReceivedEvent(CapturedOutput output) {
+    @DisplayName("Kafka 주문 취소 이벤트를 수신하면 감사 로그를 저장하고 처리 로그를 남긴다")
+    void consumeOrderCancelled_recordsAuditLogAndLogsReceivedEvent(CapturedOutput output) {
         OrderCancelledEvent event = new OrderCancelledEvent(1L, 2L, 3L, 4, BigDecimal.valueOf(40000));
+        given(auditLogServiceProvider.getIfAvailable()).willReturn(auditLogService);
 
         consumer.consumeOrderCancelled(event);
 
+        then(auditLogService).should().recordOrderCancelled(event);
         assertThat(output)
             .contains("주문 취소 이벤트를 수신했습니다.")
             .contains("orderId=1")

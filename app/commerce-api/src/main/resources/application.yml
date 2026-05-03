@@ -25,6 +25,15 @@ spring:
         - mysql
         - redis
         - kafka
+      local-mongo:
+        - local
+        - mongo
+      local-mysql-redis-kafka-mongo:
+        - local
+        - mysql
+        - redis
+        - kafka
+        - mongo
       local-config:
         - local
         - config
@@ -37,6 +46,13 @@ spring:
         - mysql
         - redis
         - kafka
+        - config
+      local-mysql-redis-kafka-mongo-config:
+        - local
+        - mysql
+        - redis
+        - kafka
+        - mongo
         - config
 
 toy-commerce:

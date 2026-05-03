@@ -23,6 +23,8 @@
   - 주문 도메인
 - `domain/inventory`
   - 재고 도메인
+- `domain/audit`
+  - MongoDB 기반 감사 로그 도메인
 
 ## 아키텍처 다이어그램
 
@@ -39,6 +41,7 @@ flowchart LR
     API --> CATALOG["domain:catalog<br/>상품"]
     API --> ORDER["domain:order<br/>주문"]
     API --> INVENTORY["domain:inventory<br/>재고"]
+    API --> AUDIT["domain:audit<br/>감사 로그"]
 
     CW --> CC
     MEMBER --> CW
@@ -49,6 +52,7 @@ flowchart LR
     ORDER --> CC
     INVENTORY --> CW
     INVENTORY --> CC
+    AUDIT --> ORDER
     CONFIG --> CONFIG_REPO["classpath:/config-repo<br/>native backend"]
 ```
 
@@ -95,9 +99,11 @@ flowchart LR
     SpringEvent --> KafkaListener["KafkaOrderEventListener<br/>kafka profile"]
     KafkaListener --> Kafka["Kafka<br/>주문 이벤트 토픽"]
     Kafka --> KafkaConsumer["KafkaOrderEventConsumer<br/>주문 이벤트 구독"]
+    KafkaConsumer --> AuditService["AuditLogService<br/>mongo profile"]
+    AuditService --> MongoDB["MongoDB<br/>audit_logs"]
 ```
 
-현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `kafka` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다. 같은 프로필에서 `KafkaOrderEventConsumer`가 주문 이벤트 토픽을 구독해 수신 로그를 남깁니다.
+현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `kafka` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다. 같은 프로필에서 `KafkaOrderEventConsumer`가 주문 이벤트 토픽을 구독해 수신 로그를 남깁니다. `mongo` 프로필이 함께 활성화되면 주문 이벤트가 MongoDB `audit_logs` 컬렉션에도 감사 로그로 저장됩니다.
 
 ## 현재 기술 스택
 
@@ -113,6 +119,7 @@ flowchart LR
 - Kafka Producer
 - Kafka Consumer
 - Spring Cloud Config
+- MongoDB
 
 ## 확장 방향
 
@@ -151,6 +158,9 @@ flowchart LR
 - `config`
   - `commerce-api`가 Spring Cloud Config Server에서 외부 설정을 optional로 가져옵니다.
   - Config Server가 없으면 로컬 기본 설정으로 계속 실행할 수 있습니다.
+- `mongo`
+  - MongoDB 접속 설정을 활성화합니다.
+  - Kafka 주문 이벤트를 `audit_logs` 컬렉션에 감사 로그로 저장합니다.
 
 프로필을 직접 조합할 때는 뒤에 적은 프로필이 앞의 설정을 덮어쓸 수 있으므로, 아래처럼 기반 프로필을 먼저 두고 교체 프로필을 뒤에 둡니다.
 
@@ -164,16 +174,19 @@ flowchart LR
 - `local-mysql-redis` = `local` + `mysql` + `redis`
 - `local-mysql-kafka` = `local` + `mysql` + `kafka`
 - `local-mysql-redis-kafka` = `local` + `mysql` + `redis` + `kafka`
+- `local-mongo` = `local` + `mongo`
+- `local-mysql-redis-kafka-mongo` = `local` + `mysql` + `redis` + `kafka` + `mongo`
 - `local-config` = `local` + `config`
 - `local-mysql-config` = `local` + `mysql` + `config`
 - `local-mysql-redis-kafka-config` = `local` + `mysql` + `redis` + `kafka` + `config`
+- `local-mysql-redis-kafka-mongo-config` = `local` + `mysql` + `redis` + `kafka` + `mongo` + `config`
 
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
-2. MongoDB 감사 로그 저장소 추가
-3. Kafka consumer에서 수신한 이벤트를 감사 로그나 알림 처리로 연결
-4. Config Server backend를 native에서 Git 저장소로 전환
+2. Oracle 레거시 정산 연동 흐름 추가
+3. Config Server backend를 native에서 Git 저장소로 전환
+4. MongoDB 감사 로그 조회 API 추가
 
 ## 로컬 실행
 
@@ -236,6 +249,22 @@ Kafka 토픽 이름은 `application-kafka.yml`에 정의되어 있습니다.
 - `toy-commerce.order.created`
 - `toy-commerce.order.cancelled`
 
+Kafka 주문 이벤트를 MongoDB 감사 로그로 저장하려면 MongoDB도 함께 실행한 뒤 `mongo` 프로필을 추가합니다.
+
+```powershell
+docker compose up -d mysql redis kafka mongo
+```
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis,kafka,mongo'
+```
+
+또는 profile group으로 실행할 수 있습니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis-kafka-mongo'
+```
+
 Spring Cloud Config를 확인하려면 먼저 Config Server를 실행합니다.
 
 ```powershell
@@ -263,7 +292,7 @@ curl http://localhost:8080/api/v1/config
 전체 로컬 인프라 조합은 아래처럼 실행할 수 있습니다.
 
 ```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis-kafka-config'
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis-kafka-mongo-config'
 ```
 
 기본 접속 정보는 `.env.example`에 정리되어 있습니다. 개인 환경에서 값을 바꾸고 싶다면 `.env` 파일을 만들어 Docker Compose 환경 변수로 사용하면 됩니다.
