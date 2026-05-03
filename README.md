@@ -96,14 +96,14 @@ flowchart LR
     OrderService["OrderService<br/>주문 생성 / 취소"] --> EventPort["OrderEventPort<br/>이벤트 발행 포트"]
     EventPort --> SpringEventAdapter["SpringOrderEventPublisherAdapter<br/>Spring ApplicationEvent 발행"]
     SpringEventAdapter --> SpringEvent["Spring ApplicationEvent<br/>트랜잭션 커밋 후 처리"]
-    SpringEvent --> KafkaListener["KafkaOrderEventListener<br/>kafka profile"]
+    SpringEvent --> KafkaListener["KafkaOrderEventListener<br/>dev profile"]
     KafkaListener --> Kafka["Kafka<br/>주문 이벤트 토픽"]
     Kafka --> KafkaConsumer["KafkaOrderEventConsumer<br/>주문 이벤트 구독"]
-    KafkaConsumer --> AuditService["AuditLogService<br/>mongo profile"]
+    KafkaConsumer --> AuditService["AuditLogService<br/>dev profile"]
     AuditService --> MongoDB["MongoDB<br/>audit_logs"]
 ```
 
-현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `kafka` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다. 같은 프로필에서 `KafkaOrderEventConsumer`가 주문 이벤트 토픽을 구독해 수신 로그를 남깁니다. `mongo` 프로필이 함께 활성화되면 주문 이벤트가 MongoDB `audit_logs` 컬렉션에도 감사 로그로 저장됩니다.
+현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `dev` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다. 같은 프로필에서 `KafkaOrderEventConsumer`가 주문 이벤트 토픽을 구독해 수신 로그를 남기고, MongoDB `audit_logs` 컬렉션에도 감사 로그를 저장합니다.
 
 ## 현재 기술 스택
 
@@ -137,49 +137,25 @@ flowchart LR
 10. ELK, Prometheus, Thanos, Grafana
 11. GoCD 파이프라인
 
-## 프로필 조합 전략
+## 프로필 전략
 
-이 프로젝트의 Spring profile은 하나만 선택하는 실행 모드가 아니라, 상황에 따라 여러 설정 조각을 조합하는 방식으로 사용합니다.
+이 프로젝트의 Spring profile은 환경 중심으로 단순화합니다. 기능별 조합을 모두 profile group으로 만들지 않고, 자주 쓰는 환경 단위만 제공합니다.
 
-- `local`
-  - 로컬 개발 공통 설정입니다.
-  - H2 인메모리 DB와 simple cache를 사용합니다.
-  - Redis를 사용하지 않는 로컬 실행에서 Redis health check가 Redis 서버를 찾지 않도록 비활성화합니다.
-- `mysql`
-  - datasource를 MySQL로 교체합니다.
-  - 캐시 설정은 바꾸지 않으므로 보통 `local,mysql`처럼 함께 사용합니다.
-- `redis`
-  - 캐시 구현을 Redis로 교체합니다.
-  - `local`에서 꺼 둔 Redis health check를 다시 활성화합니다.
-- `kafka`
-  - 주문 생성/취소 이벤트를 Kafka 토픽으로 발행합니다.
-  - Spring 이벤트를 트랜잭션 커밋 이후 Kafka Producer로 전달합니다.
-  - 주문 이벤트 토픽을 Kafka Consumer로 구독합니다.
-- `config`
-  - `commerce-api`가 Spring Cloud Config Server에서 외부 설정을 optional로 가져옵니다.
-  - Config Server가 없으면 로컬 기본 설정으로 계속 실행할 수 있습니다.
-- `mongo`
-  - MongoDB 접속 설정을 활성화합니다.
-  - Kafka 주문 이벤트를 `audit_logs` 컬렉션에 감사 로그로 저장합니다.
+- `local`: 개발자 PC 기본 실행 환경입니다. H2 인메모리 DB와 simple cache를 사용하고, 외부 Redis health check는 비활성화합니다.
+- `dev`: 개발 서버 또는 Docker Compose 기반 통합 실행 환경입니다. MySQL, Redis, Kafka, MongoDB 설정을 한 번에 사용합니다.
+- `config`: Spring Cloud Config Server에서 외부 설정을 optional로 가져오는 토글 프로필입니다.
 
-프로필을 직접 조합할 때는 뒤에 적은 프로필이 앞의 설정을 덮어쓸 수 있으므로, 아래처럼 기반 프로필을 먼저 두고 교체 프로필을 뒤에 둡니다.
+자주 쓰는 Config Server 조합은 profile group으로 제공합니다.
 
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis,kafka'
-```
-
-자주 쓰는 조합은 profile group으로도 제공합니다.
-
-- `local-mysql` = `local` + `mysql`
-- `local-mysql-redis` = `local` + `mysql` + `redis`
-- `local-mysql-kafka` = `local` + `mysql` + `kafka`
-- `local-mysql-redis-kafka` = `local` + `mysql` + `redis` + `kafka`
-- `local-mongo` = `local` + `mongo`
-- `local-mysql-redis-kafka-mongo` = `local` + `mysql` + `redis` + `kafka` + `mongo`
 - `local-config` = `local` + `config`
-- `local-mysql-config` = `local` + `mysql` + `config`
-- `local-mysql-redis-kafka-config` = `local` + `mysql` + `redis` + `kafka` + `config`
-- `local-mysql-redis-kafka-mongo-config` = `local` + `mysql` + `redis` + `kafka` + `mongo` + `config`
+- `dev-config` = `dev` + `config`
+
+설정 파일은 아래 기준으로 관리합니다.
+
+- `application.yml`: 공통 설정, 기본 프로필, profile group
+- `application-local.yml`: 로컬 PC용 H2, simple cache 설정
+- `application-dev.yml`: 개발 환경용 MySQL, Redis, Kafka, MongoDB 설정
+- `application-config.yml`: Spring Cloud Config Client 설정
 
 ## 권장 다음 작업
 
@@ -196,74 +172,22 @@ flowchart LR
 .\gradlew.bat :app:commerce-api:bootRun
 ```
 
-Docker Compose로 MySQL을 실행한 뒤 `local,mysql` 조합으로 애플리케이션을 실행할 수 있습니다.
-
-```powershell
-docker compose up -d mysql
-```
-
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql'
-```
-
-profile group을 사용하면 아래처럼 실행할 수도 있습니다.
-
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql'
-```
-
-Redis 캐시까지 함께 확인하고 싶다면 MySQL과 Redis를 함께 실행한 뒤 `local,mysql,redis` 조합을 사용합니다.
-
-```powershell
-docker compose up -d mysql redis
-```
-
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis'
-```
-
-또는 profile group으로 실행할 수 있습니다.
-
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis'
-```
-
-Kafka 주문 이벤트 발행까지 확인하고 싶다면 Kafka도 함께 실행한 뒤 `kafka` 프로필을 추가합니다.
-
-```powershell
-docker compose up -d mysql redis kafka
-```
-
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis,kafka'
-```
-
-또는 profile group으로 실행할 수 있습니다.
-
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis-kafka'
-```
-
-Kafka 토픽 이름은 `application-kafka.yml`에 정의되어 있습니다.
-
-- `toy-commerce.order.created`
-- `toy-commerce.order.cancelled`
-
-Kafka 주문 이벤트를 MongoDB 감사 로그로 저장하려면 MongoDB도 함께 실행한 뒤 `mongo` 프로필을 추가합니다.
+Docker Compose로 개발용 인프라를 실행한 뒤 `dev` 프로필로 애플리케이션을 실행할 수 있습니다.
 
 ```powershell
 docker compose up -d mysql redis kafka mongo
 ```
 
 ```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,mysql,redis,kafka,mongo'
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=dev'
 ```
 
-또는 profile group으로 실행할 수 있습니다.
+`dev` 프로필은 MySQL, Redis, Kafka, MongoDB 설정을 함께 사용합니다. Kafka 토픽 이름은 `application-dev.yml`에 정의되어 있습니다.
 
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis-kafka-mongo'
-```
+- `toy-commerce.order.created`
+- `toy-commerce.order.cancelled`
+
+Kafka 주문 이벤트가 수신되면 MongoDB `audit_logs` 컬렉션에 감사 로그가 저장됩니다.
 
 Spring Cloud Config를 확인하려면 먼저 Config Server를 실행합니다.
 
@@ -271,28 +195,22 @@ Spring Cloud Config를 확인하려면 먼저 Config Server를 실행합니다.
 .\gradlew.bat :app:config-server:bootRun
 ```
 
-다른 터미널에서 `config` 프로필을 추가해 `commerce-api`를 실행합니다.
-
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local,config'
-```
-
-또는 profile group으로 실행할 수 있습니다.
+다른 터미널에서 `config` 프로필을 함께 활성화해 `commerce-api`를 실행합니다.
 
 ```powershell
 .\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-config'
+```
+
+개발 인프라와 Config Server를 함께 사용할 때는 `dev-config` profile group을 사용합니다.
+
+```powershell
+.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=dev-config'
 ```
 
 Config Server에서 받은 설정은 아래 API로 확인할 수 있습니다.
 
 ```powershell
 curl http://localhost:8080/api/v1/config
-```
-
-전체 로컬 인프라 조합은 아래처럼 실행할 수 있습니다.
-
-```powershell
-.\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=local-mysql-redis-kafka-mongo-config'
 ```
 
 기본 접속 정보는 `.env.example`에 정리되어 있습니다. 개인 환경에서 값을 바꾸고 싶다면 `.env` 파일을 만들어 Docker Compose 환경 변수로 사용하면 됩니다.

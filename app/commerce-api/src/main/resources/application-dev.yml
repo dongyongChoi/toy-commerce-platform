@@ -1,0 +1,55 @@
+spring:
+  cache:
+    type: redis
+    redis:
+      cache-null-values: false
+      key-prefix: "toy-commerce:"
+      time-to-live: 10m
+      use-key-prefix: true
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:toy_commerce}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    username: ${MYSQL_USER:toy_user}
+    password: ${MYSQL_PASSWORD:toy_password}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2s
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/toy_commerce}
+  jpa:
+    hibernate.ddl-auto: update
+    properties.hibernate.format_sql: true
+    open-in-view: false
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: ${KAFKA_CONSUMER_GROUP_ID:toy-commerce-order-event-consumer}
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: com.toyproject.order.application.event
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.add.type.headers: true
+
+toy-commerce:
+  kafka:
+    topics:
+      order-created: toy-commerce.order.created
+      order-cancelled: toy-commerce.order.cancelled
+
+management:
+  health:
+    mongo:
+      enabled: true
+    redis:
+      enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: debug

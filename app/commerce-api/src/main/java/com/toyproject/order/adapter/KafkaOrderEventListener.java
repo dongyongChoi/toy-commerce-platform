@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
-@Profile("kafka")
+@Profile("dev")
 @Component
 public class KafkaOrderEventListener {
     private final KafkaTemplate<String, Object> kafkaTemplate;

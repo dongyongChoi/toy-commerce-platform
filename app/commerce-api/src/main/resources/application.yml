@@ -9,50 +9,11 @@ spring:
   profiles:
     default: local
     group:
-      local-mysql:
-        - local
-        - mysql
-      local-mysql-redis:
-        - local
-        - mysql
-        - redis
-      local-mysql-kafka:
-        - local
-        - mysql
-        - kafka
-      local-mysql-redis-kafka:
-        - local
-        - mysql
-        - redis
-        - kafka
-      local-mongo:
-        - local
-        - mongo
-      local-mysql-redis-kafka-mongo:
-        - local
-        - mysql
-        - redis
-        - kafka
-        - mongo
       local-config:
         - local
         - config
-      local-mysql-config:
-        - local
-        - mysql
-        - config
-      local-mysql-redis-kafka-config:
-        - local
-        - mysql
-        - redis
-        - kafka
-        - config
-      local-mysql-redis-kafka-mongo-config:
-        - local
-        - mysql
-        - redis
-        - kafka
-        - mongo
+      dev-config:
+        - dev
         - config
 
 toy-commerce:
