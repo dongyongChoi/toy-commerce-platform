@@ -156,6 +156,7 @@ flowchart LR
 - `application-local.yml`: 로컬 PC용 H2, simple cache 설정
 - `application-dev.yml`: 개발 환경용 MySQL, Redis, Kafka, MongoDB 설정
 - `application-config.yml`: Spring Cloud Config Client 설정
+- `app/commerce-api/dev-vm-options.example`: 외부 개발 인프라 접속값을 VM options로 주입하기 위한 템플릿
 
 ## 권장 다음 작업
 
@@ -188,6 +189,20 @@ docker compose up -d mysql redis kafka mongo
 - `toy-commerce.order.cancelled`
 
 Kafka 주문 이벤트가 수신되면 MongoDB `audit_logs` 컬렉션에 감사 로그가 저장됩니다.
+
+MySQL, Redis, Kafka, MongoDB가 외부 서버에 있다면 [dev-vm-options.example](/c:/Users/home/Documents/project/toy-project/app/commerce-api/dev-vm-options.example)의 값을 복사해 IntelliJ Run Configuration의 VM options에 붙여 넣고 IP와 계정 정보를 환경에 맞게 바꿉니다.
+
+```text
+-Dspring.profiles.active=dev
+-DMYSQL_HOST=192.168.0.10
+-DREDIS_HOST=192.168.0.10
+-DKAFKA_BOOTSTRAP_SERVERS=192.168.0.10:9092
+-DMONGODB_HOST=192.168.0.10
+```
+
+`.env` 파일은 Docker Compose가 읽는 값이고, 로컬 JVM으로 실행하는 Spring Boot 애플리케이션에는 자동으로 주입되지 않습니다. IntelliJ에서 애플리케이션을 직접 실행할 때는 VM options 또는 Environment variables로 주입해야 합니다.
+
+Kafka를 외부 서버의 Docker Compose로 실행한다면 `.env`의 `KAFKA_HOST`도 외부에서 접근 가능한 서버 IP로 바꿔야 합니다. 이 값은 Kafka broker가 클라이언트에게 알려주는 재접속 주소(`advertised.listeners`)로 사용됩니다.
 
 Spring Cloud Config를 확인하려면 먼저 Config Server를 실행합니다.
 

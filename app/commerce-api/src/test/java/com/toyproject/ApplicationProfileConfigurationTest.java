@@ -73,8 +73,10 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("toy-commerce:");
         assertThat(propertySource.getProperty("spring.data.redis.host"))
             .isEqualTo("${REDIS_HOST:localhost}");
+        assertThat(propertySource.getProperty("spring.data.redis.port"))
+            .isEqualTo("${REDIS_PORT:6379}");
         assertThat(propertySource.getProperty("spring.data.mongodb.uri"))
-            .isEqualTo("${MONGODB_URI:mongodb://localhost:27017/toy_commerce}");
+            .isEqualTo("mongodb://${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DATABASE:toy_commerce}");
         assertThat(propertySource.getProperty("spring.kafka.bootstrap-servers"))
             .isEqualTo("${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}");
         assertThat(propertySource.getProperty("spring.kafka.consumer.group-id"))

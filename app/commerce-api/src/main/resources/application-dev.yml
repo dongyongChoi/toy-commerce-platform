@@ -17,7 +17,7 @@ spring:
       port: ${REDIS_PORT:6379}
       timeout: 2s
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/toy_commerce}
+      uri: mongodb://${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/${MONGODB_DATABASE:toy_commerce}
   jpa:
     hibernate.ddl-auto: update
     properties.hibernate.format_sql: true
