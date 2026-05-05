@@ -114,6 +114,19 @@ flowchart LR
 
 현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `dev` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다. 같은 프로필에서 `KafkaOrderEventConsumer`가 주문 이벤트 토픽을 구독해 수신 로그를 남기고, MongoDB `audit_logs` 컬렉션에도 감사 로그를 저장합니다. 저장된 감사 로그는 `AuditLogController`의 `GET /api/v1/audit-logs` API로 조회할 수 있습니다.
 
+### 4. 로그 수집 흐름
+
+```mermaid
+flowchart LR
+    CommerceApi["commerce-api<br/>Logback"] --> FileLog["logs/commerce-api.log"]
+    CommerceApi --> SyslogAppender["SyslogAppender<br/>Logstash 전송"]
+    SyslogAppender --> Logstash["Logstash<br/>syslog input"]
+    Logstash --> Elasticsearch["Elasticsearch<br/>toy-commerce-logs-*"]
+    Kibana["Kibana<br/>로그 검색 / 시각화"] --> Elasticsearch
+```
+
+`dev` 프로필에서는 Logback이 콘솔과 파일에 로그를 남기고, Syslog appender를 통해 Logstash로도 로그를 전송합니다. Logstash는 수신한 로그에 `service.name=commerce-api` 필드를 붙여 Elasticsearch의 `toy-commerce-logs-*` 인덱스로 저장하고, Kibana에서 조회합니다.
+
 ## 현재 기술 스택
 
 - Java
@@ -129,6 +142,7 @@ flowchart LR
 - Kafka Consumer
 - Spring Cloud Config
 - MongoDB
+- ELK
 
 ## 확장 방향
 
@@ -142,17 +156,18 @@ flowchart LR
 6. Spring Cloud Config 기반 설정 외부화
 7. MongoDB 감사 로그 저장
 8. MongoDB 감사 로그 조회 API
-9. Oracle 레거시 정산 연동
-10. Docker, Kubernetes, Istio
-11. ELK, Prometheus, Thanos, Grafana
-12. GoCD 파이프라인
+9. ELK 기반 애플리케이션 로그 수집
+10. Oracle 레거시 정산 연동
+11. Docker, Kubernetes, Istio
+12. Prometheus, Thanos, Grafana
+13. GoCD 파이프라인
 
 ## 프로필 전략
 
 이 프로젝트의 Spring profile은 환경 중심으로 단순화합니다. 기능별 조합을 모두 profile group으로 만들지 않고, 자주 쓰는 환경 단위만 제공합니다.
 
 - `local`: 개발자 PC 기본 실행 환경입니다. H2 인메모리 DB와 simple cache를 사용하고, 외부 Redis health check는 비활성화합니다.
-- `dev`: 개발 서버 또는 Docker Compose 기반 통합 실행 환경입니다. MySQL, Redis, Kafka, MongoDB 설정을 한 번에 사용합니다.
+- `dev`: 개발 서버 또는 Docker Compose 기반 통합 실행 환경입니다. MySQL, Redis, Kafka, MongoDB, ELK 설정을 한 번에 사용합니다.
 - `config`: Spring Cloud Config Server에서 외부 설정을 optional로 가져오는 토글 프로필입니다.
 
 자주 쓰는 Config Server 조합은 profile group으로 제공합니다.
@@ -166,14 +181,16 @@ flowchart LR
 - `application-local.yml`: 로컬 PC용 H2, simple cache 설정
 - `application-dev.yml`: 개발 환경용 MySQL, Redis, Kafka, MongoDB 설정
 - `application-config.yml`: Spring Cloud Config Client 설정
-- `app/commerce-api/dev-vm-options.example`: 외부 개발 인프라 접속값을 VM options로 주입하기 위한 템플릿
+- `logback-spring.xml`: 콘솔, 파일, Logstash Syslog appender 설정
+- `dev-vm-options.example`: 외부 개발 인프라 접속값을 VM options로 주입하기 위한 템플릿
+- `observability/logstash/pipeline/commerce-api.conf`: commerce-api 로그를 Elasticsearch 인덱스로 전달하는 Logstash 파이프라인
 
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
 2. Oracle 레거시 정산 연동 흐름 추가
 3. Config Server backend를 native에서 Git 저장소로 전환
-4. ELK로 애플리케이션 로그 수집
+4. Prometheus와 Grafana 기반 메트릭 시각화
 
 ## 로컬 실행
 
@@ -186,14 +203,14 @@ flowchart LR
 Docker Compose로 개발용 인프라를 실행한 뒤 `dev` 프로필로 애플리케이션을 실행할 수 있습니다.
 
 ```powershell
-docker compose up -d mysql redis kafka mongo
+docker compose up -d mysql redis kafka mongo elasticsearch logstash kibana
 ```
 
 ```powershell
 .\gradlew.bat :app:commerce-api:bootRun --args='--spring.profiles.active=dev'
 ```
 
-`dev` 프로필은 MySQL, Redis, Kafka, MongoDB 설정을 함께 사용합니다. Kafka 토픽 이름은 `application-dev.yml`에 정의되어 있습니다.
+`dev` 프로필은 MySQL, Redis, Kafka, MongoDB, ELK 설정을 함께 사용합니다. Kafka 토픽 이름은 `application-dev.yml`에 정의되어 있습니다.
 
 - `toy-commerce.order.created`
 - `toy-commerce.order.cancelled`
@@ -207,7 +224,13 @@ curl http://localhost:8080/api/v1/audit-logs
 curl "http://localhost:8080/api/v1/audit-logs?eventType=ORDER_CREATED"
 ```
 
-MySQL, Redis, Kafka, MongoDB가 외부 서버에 있다면 [dev-vm-options.example](/c:/Users/home/Documents/project/toy-project/app/commerce-api/dev-vm-options.example)의 값을 복사해 IntelliJ Run Configuration의 VM options에 붙여 넣고 IP와 계정 정보를 환경에 맞게 바꿉니다.
+`dev` 프로필에서는 애플리케이션 로그가 `logs/commerce-api.log` 파일에 기록되고, Logback Syslog appender를 통해 Logstash로도 전송됩니다. Kibana는 아래 주소에서 확인할 수 있으며, Data View는 `toy-commerce-logs-*`로 만들면 됩니다.
+
+```text
+http://localhost:5601
+```
+
+MySQL, Redis, Kafka, MongoDB가 외부 서버에 있다면 [dev-vm-options.example](/c:/Users/home/Documents/project/toy-project/dev-vm-options.example)의 값을 복사해 IntelliJ Run Configuration의 VM options에 붙여 넣고 IP와 계정 정보를 환경에 맞게 바꿉니다.
 
 ```text
 -Dspring.profiles.active=dev
@@ -215,6 +238,7 @@ MySQL, Redis, Kafka, MongoDB가 외부 서버에 있다면 [dev-vm-options.examp
 -DREDIS_HOST=192.168.0.10
 -DKAFKA_BOOTSTRAP_SERVERS=192.168.0.10:9092
 -DMONGODB_HOST=192.168.0.10
+-DLOGSTASH_HOST=192.168.0.10
 ```
 
 `.env` 파일은 Docker Compose가 읽는 값이고, 로컬 JVM으로 실행하는 Spring Boot 애플리케이션에는 자동으로 주입되지 않습니다. IntelliJ에서 애플리케이션을 직접 실행할 때는 VM options 또는 Environment variables로 주입해야 합니다.

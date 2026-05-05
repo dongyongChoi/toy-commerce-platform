@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <springProperty scope="context" name="LOG_FILE" source="logging.file.name" defaultValue="logs/commerce-api.log"/>
+    <springProperty scope="context" name="LOGSTASH_HOST" source="toy-commerce.logging.logstash.host" defaultValue="localhost"/>
+    <springProperty scope="context" name="LOGSTASH_PORT" source="toy-commerce.logging.logstash.port" defaultValue="5514"/>
+
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml"/>
+    <include resource="org/springframework/boot/logging/logback/file-appender.xml"/>
+
+    <appender name="LOGSTASH_SYSLOG" class="ch.qos.logback.classic.net.SyslogAppender">
+        <syslogHost>${LOGSTASH_HOST}</syslogHost>
+        <port>${LOGSTASH_PORT}</port>
+        <facility>LOCAL0</facility>
+        <suffixPattern>[commerce-api] [%thread] %-5level %logger{36} - %msg%ex</suffixPattern>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <appender-ref ref="FILE"/>
+    </root>
+
+    <springProfile name="dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+            <appender-ref ref="FILE"/>
+            <appender-ref ref="LOGSTASH_SYSLOG"/>
+        </root>
+    </springProfile>
+</configuration>

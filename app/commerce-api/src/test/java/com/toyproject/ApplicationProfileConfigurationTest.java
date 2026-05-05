@@ -85,6 +85,12 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("toy-commerce.order.created");
         assertThat(propertySource.getProperty("toy-commerce.kafka.topics.order-cancelled"))
             .isEqualTo("toy-commerce.order.cancelled");
+        assertThat(propertySource.getProperty("toy-commerce.logging.logstash.host"))
+            .isEqualTo("${LOGSTASH_HOST:localhost}");
+        assertThat(propertySource.getProperty("toy-commerce.logging.logstash.port"))
+            .isEqualTo("${LOGSTASH_PORT:5514}");
+        assertThat(propertySource.getProperty("logging.file.name"))
+            .isEqualTo("${COMMERCE_API_LOG_FILE:logs/commerce-api.log}");
         assertThat(propertySource.getProperty("management.health.mongo.enabled"))
             .isEqualTo(true);
         assertThat(propertySource.getProperty("management.health.redis.enabled"))

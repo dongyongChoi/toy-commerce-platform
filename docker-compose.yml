@@ -76,8 +76,52 @@ services:
     volumes:
       - mongo-data:/data/db
 
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.3
+    container_name: toy-commerce-elasticsearch
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: false
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.15.3
+    container_name: toy-commerce-logstash
+    ports:
+      - "${LOGSTASH_PORT:-5514}:5514/udp"
+      - "${LOGSTASH_PORT:-5514}:5514/tcp"
+      - "${LOGSTASH_MONITORING_PORT:-9600}:9600"
+    environment:
+      LS_JAVA_OPTS: -Xms256m -Xmx256m
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - ./observability/logstash/pipeline:/usr/share/logstash/pipeline:ro
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.15.3
+    container_name: toy-commerce-kibana
+    ports:
+      - "${KIBANA_PORT:-5601}:5601"
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
 volumes:
   mysql-data:
   redis-data:
   kafka-data:
   mongo-data:
+  elasticsearch-data:
