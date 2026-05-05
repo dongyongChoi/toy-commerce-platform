@@ -20,6 +20,7 @@ import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -79,6 +80,18 @@ class AuditLogControllerTest {
             .andExpect(jsonPath("$.success").value(true))
             .andExpect(jsonPath("$.data[0].id").value("audit-2"))
             .andExpect(jsonPath("$.data[0].eventType").value("ORDER_CANCELLED"));
+    }
+
+    @Test
+    @DisplayName("지원하지 않는 이벤트 타입이면 400 응답을 반환한다")
+    void getAuditLogs_withInvalidEventType_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/audit-logs")
+                .queryParam("eventType", "UNKNOWN"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.errorCode").value("COMMON-400"));
+
+        then(auditLogService).shouldHaveNoInteractions();
     }
 
     private AuditLog auditLog(
