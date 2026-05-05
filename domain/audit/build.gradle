@@ -1,4 +1,5 @@
 dependencies {
+    implementation project(':common:common-web')
     implementation project(':domain:order')
 
     implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'

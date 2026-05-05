@@ -7,12 +7,17 @@ import com.toyproject.order.application.event.OrderCancelledEvent;
 import com.toyproject.order.application.event.OrderCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Profile;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Profile("dev")
 @RequiredArgsConstructor
 @Service
 public class AuditLogService {
+    private static final Sort LATEST_FIRST = Sort.by(Sort.Direction.DESC, "createdAt");
+
     private final AuditLogRepository auditLogRepository;
 
     public void recordOrderCreated(OrderCreatedEvent event) {
@@ -41,5 +46,12 @@ public class AuditLogService {
                 event.totalPrice()
             )
         ));
+    }
+
+    public List<AuditLog> getAuditLogs(AuditEventType eventType) {
+        if (eventType == null) {
+            return auditLogRepository.findAll(LATEST_FIRST);
+        }
+        return auditLogRepository.findByEventType(eventType, LATEST_FIRST);
     }
 }

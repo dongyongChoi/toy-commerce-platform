@@ -52,6 +52,7 @@ flowchart LR
     ORDER --> CC
     INVENTORY --> CW
     INVENTORY --> CC
+    AUDIT --> CW
     AUDIT --> ORDER
     CONFIG --> CONFIG_REPO["classpath:/config-repo<br/>native backend"]
 ```
@@ -65,14 +66,19 @@ flowchart TD
     subgraph APP["commerce-api (Single Spring Boot Application)"]
         direction TD
 
-        Controller["Spring MVC Controllers<br/>member / catalog / order / inventory"]
+        Controller["Spring MVC Controllers<br/>member / catalog / order / inventory / audit"]
         Service["Application Services"]
         Repository["JPA Repositories"]
         ORM["JPA / Hibernate"]
+        AuditController["AuditLogController<br/>감사 로그 조회 API"]
+        AuditService["AuditLogService<br/>감사 로그 저장 / 조회"]
+        MongoRepository["MongoRepository"]
 
         Controller --> Service
         Service --> Repository
         Repository --> ORM
+        AuditController --> AuditService
+        AuditService --> MongoRepository
 
         CommonWeb["common-web<br/>응답 포맷 / 전역 예외 처리"]
         CommonCore["common-core<br/>공통 예외 / 에러 코드"]
@@ -83,6 +89,7 @@ flowchart TD
 
     ORM --> H2["H2<br/>local profile"]
     ORM -. 추후 전환 .-> MySQL["MySQL"]
+    MongoRepository --> MongoDB["MongoDB<br/>audit_logs"]
 
     ConfigClient["Spring Cloud Config Client<br/>config profile"]
     ConfigClient -. optional import .-> ConfigServer["Config Server<br/>localhost:8888"]
@@ -101,9 +108,11 @@ flowchart LR
     Kafka --> KafkaConsumer["KafkaOrderEventConsumer<br/>주문 이벤트 구독"]
     KafkaConsumer --> AuditService["AuditLogService<br/>dev profile"]
     AuditService --> MongoDB["MongoDB<br/>audit_logs"]
+    Client["Client / Postman"] --> AuditController["AuditLogController<br/>감사 로그 조회 API"]
+    AuditController --> AuditService
 ```
 
-현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `dev` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다. 같은 프로필에서 `KafkaOrderEventConsumer`가 주문 이벤트 토픽을 구독해 수신 로그를 남기고, MongoDB `audit_logs` 컬렉션에도 감사 로그를 저장합니다.
+현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `dev` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다. 같은 프로필에서 `KafkaOrderEventConsumer`가 주문 이벤트 토픽을 구독해 수신 로그를 남기고, MongoDB `audit_logs` 컬렉션에도 감사 로그를 저장합니다. 저장된 감사 로그는 `AuditLogController`의 `GET /api/v1/audit-logs` API로 조회할 수 있습니다.
 
 ## 현재 기술 스택
 
@@ -131,11 +140,12 @@ flowchart LR
 4. Kafka 주문 이벤트 발행
 5. Kafka 이벤트 구독
 6. Spring Cloud Config 기반 설정 외부화
-7. MongoDB 감사 로그
-8. Oracle 레거시 정산 연동
-9. Docker, Kubernetes, Istio
-10. ELK, Prometheus, Thanos, Grafana
-11. GoCD 파이프라인
+7. MongoDB 감사 로그 저장
+8. MongoDB 감사 로그 조회 API
+9. Oracle 레거시 정산 연동
+10. Docker, Kubernetes, Istio
+11. ELK, Prometheus, Thanos, Grafana
+12. GoCD 파이프라인
 
 ## 프로필 전략
 
@@ -163,7 +173,7 @@ flowchart LR
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
 2. Oracle 레거시 정산 연동 흐름 추가
 3. Config Server backend를 native에서 Git 저장소로 전환
-4. MongoDB 감사 로그 조회 API 추가
+4. ELK로 애플리케이션 로그 수집
 
 ## 로컬 실행
 
@@ -189,6 +199,13 @@ docker compose up -d mysql redis kafka mongo
 - `toy-commerce.order.cancelled`
 
 Kafka 주문 이벤트가 수신되면 MongoDB `audit_logs` 컬렉션에 감사 로그가 저장됩니다.
+
+저장된 감사 로그는 아래 API로 확인할 수 있습니다.
+
+```powershell
+curl http://localhost:8080/api/v1/audit-logs
+curl "http://localhost:8080/api/v1/audit-logs?eventType=ORDER_CREATED"
+```
 
 MySQL, Redis, Kafka, MongoDB가 외부 서버에 있다면 [dev-vm-options.example](/c:/Users/home/Documents/project/toy-project/app/commerce-api/dev-vm-options.example)의 값을 복사해 IntelliJ Run Configuration의 VM options에 붙여 넣고 IP와 계정 정보를 환경에 맞게 바꿉니다.
 
