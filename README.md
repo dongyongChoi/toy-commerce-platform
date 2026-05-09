@@ -116,6 +116,8 @@ flowchart LR
 
 주문 생성 API는 `memberId`, `productId`, `quantity`만 입력받습니다. `totalPrice`는 클라이언트 요청값을 신뢰하지 않고, `OrderService`가 `ProductPort`를 통해 조회한 상품 가격과 주문 수량으로 계산합니다.
 
+재고 차감과 복구는 `StockItemRepository`의 비관적 쓰기 락(`PESSIMISTIC_WRITE`) 조회를 통해 같은 상품 재고 행을 동시에 수정하지 않도록 제어합니다.
+
 ### 4. 로그 수집 흐름
 
 ```mermaid
@@ -190,11 +192,10 @@ flowchart LR
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
-2. 재고 차감 동시성 제어
-3. 회원 이메일 중복 예외 처리
-4. Oracle 레거시 정산 연동 흐름 추가
-5. Config Server backend를 native에서 Git 저장소로 전환
-6. Prometheus와 Grafana 기반 메트릭 시각화
+2. 회원 이메일 중복 예외 처리
+3. Oracle 레거시 정산 연동 흐름 추가
+4. Config Server backend를 native에서 Git 저장소로 전환
+5. Prometheus와 Grafana 기반 메트릭 시각화
 
 ## 로컬 실행
 
