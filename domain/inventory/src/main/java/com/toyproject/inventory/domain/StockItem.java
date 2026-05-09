@@ -1,7 +1,5 @@
 package com.toyproject.inventory.domain;
 
-import com.toyproject.common.core.DomainException;
-import com.toyproject.common.core.ErrorCode;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -29,13 +27,6 @@ public class StockItem {
 
     public void updateQuantity(int quantity) {
         this.quantity = quantity;
-    }
-
-    public void deduct(int quantity) {
-        if (this.quantity < quantity) {
-            throw new DomainException(ErrorCode.INVALID_INPUT, "재고가 부족합니다.");
-        }
-        this.quantity -= quantity;
     }
 
     public void restore(int quantity) {

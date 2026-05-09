@@ -57,7 +57,7 @@ class InventoryServiceTest {
     @DisplayName("기존 재고가 없으면 새 재고를 생성해 저장한다")
     void upsertStock_whenMissing_createsNewStockItem() {
         UpsertStockRequest request = new UpsertStockRequest(50);
-        given(stockItemRepository.findByProductIdForUpdate(10L)).willReturn(Optional.empty());
+        given(stockItemRepository.findByProductId(10L)).willReturn(Optional.empty());
         given(stockItemRepository.save(any(StockItem.class))).willAnswer(invocation -> {
             StockItem item = invocation.getArgument(0);
             ReflectionTestUtils.setField(item, "id", 1L);
@@ -78,7 +78,7 @@ class InventoryServiceTest {
     void upsertStock_whenExisting_updatesQuantity() {
         StockItem existing = new StockItem(10L, 30);
         ReflectionTestUtils.setField(existing, "id", 1L);
-        given(stockItemRepository.findByProductIdForUpdate(10L)).willReturn(Optional.of(existing));
+        given(stockItemRepository.findByProductId(10L)).willReturn(Optional.of(existing));
         given(stockItemRepository.save(existing)).willReturn(existing);
 
         StockItemResponse result = inventoryService.upsertStock(10L, new UpsertStockRequest(80));
@@ -102,20 +102,18 @@ class InventoryServiceTest {
     @Test
     @DisplayName("재고 차감 시 현재 수량에서 요청 수량만큼 차감된다")
     void deductStock_reducesQuantityByRequestedAmount() {
-        StockItem stockItem = new StockItem(10L, 50);
-        ReflectionTestUtils.setField(stockItem, "id", 1L);
-        given(stockItemRepository.findByProductIdForUpdate(10L)).willReturn(Optional.of(stockItem));
+        given(stockItemRepository.deductIfEnough(10L, 10)).willReturn(1);
 
         inventoryService.deductStock(10L, 10);
 
-        assertThat(stockItem.getQuantity()).isEqualTo(40);
+        then(stockItemRepository).should().deductIfEnough(10L, 10);
     }
 
     @Test
     @DisplayName("재고가 부족하면 차감 시 예외가 발생한다")
     void deductStock_whenInsufficientStock_throwsDomainException() {
-        StockItem stockItem = new StockItem(10L, 5);
-        given(stockItemRepository.findByProductIdForUpdate(10L)).willReturn(Optional.of(stockItem));
+        given(stockItemRepository.deductIfEnough(10L, 10)).willReturn(0);
+        given(stockItemRepository.existsByProductId(10L)).willReturn(true);
 
         assertThatThrownBy(() -> inventoryService.deductStock(10L, 10))
             .isInstanceOf(DomainException.class)
@@ -125,7 +123,8 @@ class InventoryServiceTest {
     @Test
     @DisplayName("재고 정보가 없으면 차감 시 예외가 발생한다")
     void deductStock_whenStockNotFound_throwsDomainException() {
-        given(stockItemRepository.findByProductIdForUpdate(10L)).willReturn(Optional.empty());
+        given(stockItemRepository.deductIfEnough(10L, 5)).willReturn(0);
+        given(stockItemRepository.existsByProductId(10L)).willReturn(false);
 
         assertThatThrownBy(() -> inventoryService.deductStock(10L, 5))
             .isInstanceOf(DomainException.class)
@@ -137,7 +136,7 @@ class InventoryServiceTest {
     void restoreStock_increasesQuantityByRequestedAmount() {
         StockItem stockItem = new StockItem(10L, 30);
         ReflectionTestUtils.setField(stockItem, "id", 1L);
-        given(stockItemRepository.findByProductIdForUpdate(10L)).willReturn(Optional.of(stockItem));
+        given(stockItemRepository.findByProductId(10L)).willReturn(Optional.of(stockItem));
 
         inventoryService.restoreStock(10L, 5);
 
@@ -147,7 +146,7 @@ class InventoryServiceTest {
     @Test
     @DisplayName("재고 정보가 없으면 복구 시 예외가 발생한다")
     void restoreStock_whenStockNotFound_throwsDomainException() {
-        given(stockItemRepository.findByProductIdForUpdate(10L)).willReturn(Optional.empty());
+        given(stockItemRepository.findByProductId(10L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> inventoryService.restoreStock(10L, 5))
             .isInstanceOf(DomainException.class)

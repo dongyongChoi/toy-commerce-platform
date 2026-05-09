@@ -31,7 +31,7 @@ public class InventoryService {
             throw new DomainException(ErrorCode.INVALID_INPUT, "quantity must be zero or greater");
         }
 
-        StockItem stockItem = stockItemRepository.findByProductIdForUpdate(productId)
+        StockItem stockItem = stockItemRepository.findByProductId(productId)
             .map(existing -> {
                 existing.updateQuantity(request.quantity());
                 return existing;
@@ -43,18 +43,20 @@ public class InventoryService {
 
     @Transactional
     public void deductStock(Long productId, int quantity) {
-        StockItem stockItem = findStockItemForUpdate(productId);
-        stockItem.deduct(quantity);
+        int updatedCount = stockItemRepository.deductIfEnough(productId, quantity);
+        if (updatedCount == 1) {
+            return;
+        }
+        if (!stockItemRepository.existsByProductId(productId)) {
+            throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "재고 정보가 없습니다.");
+        }
+        throw new DomainException(ErrorCode.INVALID_INPUT, "재고가 부족합니다.");
     }
 
     @Transactional
     public void restoreStock(Long productId, int quantity) {
-        StockItem stockItem = findStockItemForUpdate(productId);
-        stockItem.restore(quantity);
-    }
-
-    private StockItem findStockItemForUpdate(Long productId) {
-        return stockItemRepository.findByProductIdForUpdate(productId)
+        StockItem stockItem = stockItemRepository.findByProductId(productId)
             .orElseThrow(() -> new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "재고 정보가 없습니다."));
+        stockItem.restore(quantity);
     }
 }
