@@ -8,6 +8,7 @@ import com.toyproject.order.application.port.MemberPort;
 import com.toyproject.order.application.port.OrderEventPort;
 import com.toyproject.order.application.port.ProductPort;
 import com.toyproject.order.application.port.StockPort;
+import com.toyproject.order.application.port.dto.ProductSnapshot;
 import com.toyproject.order.domain.PurchaseOrder;
 import com.toyproject.order.domain.PurchaseOrderRepository;
 import com.toyproject.order.web.dto.CreateOrderRequest;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RequiredArgsConstructor
@@ -46,13 +48,14 @@ public class OrderService {
         if (!memberPort.exists(request.memberId())) {
             throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "회원을 찾을 수 없습니다.");
         }
-        if (!productPort.exists(request.productId())) {
-            throw new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "상품을 찾을 수 없습니다.");
-        }
-        stockPort.deduct(request.productId(), request.quantity());
+        ProductSnapshot product = productPort.findById(request.productId())
+            .orElseThrow(() -> new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "상품을 찾을 수 없습니다."));
+        stockPort.deduct(product.id(), request.quantity());
+
+        BigDecimal totalPrice = product.price().multiply(BigDecimal.valueOf(request.quantity()));
 
         PurchaseOrder order = purchaseOrderRepository.save(
-            new PurchaseOrder(request.memberId(), request.productId(), request.quantity(), request.totalPrice())
+            new PurchaseOrder(request.memberId(), product.id(), request.quantity(), totalPrice)
         );
         orderEventPort.publishOrderCreated(OrderCreatedEvent.from(order));
         return OrderResponse.from(order);

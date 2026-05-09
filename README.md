@@ -114,6 +114,8 @@ flowchart LR
 
 현재 주문 도메인은 Kafka를 직접 알지 않도록 `OrderEventPort`에만 의존합니다. `commerce-api` 애플리케이션이 Spring 이벤트 발행 어댑터를 제공하고, `dev` 프로필이 활성화되면 `KafkaOrderEventListener`가 트랜잭션 커밋 이후 주문 이벤트를 Kafka 토픽으로 전달합니다. 같은 프로필에서 `KafkaOrderEventConsumer`가 주문 이벤트 토픽을 구독해 수신 로그를 남기고, MongoDB `audit_logs` 컬렉션에도 감사 로그를 저장합니다. 저장된 감사 로그는 `AuditLogController`의 `GET /api/v1/audit-logs` API로 조회할 수 있습니다.
 
+주문 생성 API는 `memberId`, `productId`, `quantity`만 입력받습니다. `totalPrice`는 클라이언트 요청값을 신뢰하지 않고, `OrderService`가 `ProductPort`를 통해 조회한 상품 가격과 주문 수량으로 계산합니다.
+
 ### 4. 로그 수집 흐름
 
 ```mermaid
@@ -188,9 +190,11 @@ flowchart LR
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
-2. Oracle 레거시 정산 연동 흐름 추가
-3. Config Server backend를 native에서 Git 저장소로 전환
-4. Prometheus와 Grafana 기반 메트릭 시각화
+2. 재고 차감 동시성 제어
+3. 회원 이메일 중복 예외 처리
+4. Oracle 레거시 정산 연동 흐름 추가
+5. Config Server backend를 native에서 Git 저장소로 전환
+6. Prometheus와 Grafana 기반 메트릭 시각화
 
 ## 로컬 실행
 

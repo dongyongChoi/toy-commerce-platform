@@ -7,6 +7,7 @@ import com.toyproject.order.application.port.MemberPort;
 import com.toyproject.order.application.port.OrderEventPort;
 import com.toyproject.order.application.port.ProductPort;
 import com.toyproject.order.application.port.StockPort;
+import com.toyproject.order.application.port.dto.ProductSnapshot;
 import com.toyproject.order.domain.PurchaseOrder;
 import com.toyproject.order.domain.PurchaseOrderRepository;
 import com.toyproject.order.web.dto.CreateOrderRequest;
@@ -96,11 +97,11 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("주문을 생성하면 재고를 차감하고 주문 생성 이벤트를 발행한다")
+    @DisplayName("주문을 생성하면 상품 가격으로 총 금액을 계산하고 주문 생성 이벤트를 발행한다")
     void createOrder_savesOrder_deductsStock_andPublishesEvent() {
-        CreateOrderRequest request = new CreateOrderRequest(1L, 10L, 2, BigDecimal.valueOf(20000));
+        CreateOrderRequest request = new CreateOrderRequest(1L, 10L, 2);
         given(memberPort.exists(1L)).willReturn(true);
-        given(productPort.exists(10L)).willReturn(true);
+        given(productPort.findById(10L)).willReturn(Optional.of(new ProductSnapshot(10L, BigDecimal.valueOf(10000))));
         doNothing().when(stockPort).deduct(10L, 2);
         given(purchaseOrderRepository.save(any(PurchaseOrder.class))).willAnswer(invocation -> {
             PurchaseOrder order = invocation.getArgument(0);
@@ -131,7 +132,7 @@ class OrderServiceTest {
     @Test
     @DisplayName("존재하지 않는 회원으로 주문 생성 시 예외가 발생한다")
     void createOrder_whenMemberNotFound_throwsDomainException() {
-        CreateOrderRequest request = new CreateOrderRequest(99L, 10L, 2, BigDecimal.valueOf(20000));
+        CreateOrderRequest request = new CreateOrderRequest(99L, 10L, 2);
         given(memberPort.exists(99L)).willReturn(false);
 
         assertThatThrownBy(() -> orderService.createOrder(request))
@@ -145,9 +146,9 @@ class OrderServiceTest {
     @Test
     @DisplayName("존재하지 않는 상품으로 주문 생성 시 예외가 발생한다")
     void createOrder_whenProductNotFound_throwsDomainException() {
-        CreateOrderRequest request = new CreateOrderRequest(1L, 99L, 2, BigDecimal.valueOf(20000));
+        CreateOrderRequest request = new CreateOrderRequest(1L, 99L, 2);
         given(memberPort.exists(1L)).willReturn(true);
-        given(productPort.exists(99L)).willReturn(false);
+        given(productPort.findById(99L)).willReturn(Optional.empty());
 
         assertThatThrownBy(() -> orderService.createOrder(request))
             .isInstanceOf(DomainException.class)

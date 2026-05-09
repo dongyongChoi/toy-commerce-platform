@@ -92,8 +92,7 @@ class OrderControllerTest {
                         {
                           "memberId": 1,
                           "productId": 10,
-                          "quantity": 2,
-                          "totalPrice": 20000
+                          "quantity": 2
                         }
                         """)
             )
@@ -114,8 +113,7 @@ class OrderControllerTest {
                         {
                           "memberId": 1,
                           "productId": 10,
-                          "quantity": 0,
-                          "totalPrice": 20000
+                          "quantity": 0
                         }
                         """)
             )
@@ -127,17 +125,35 @@ class OrderControllerTest {
     }
 
     @Test
-    @DisplayName("주문 생성 요청의 총 가격이 0 이하이면 400 응답을 반환한다")
-    void createOrder_withNonPositiveTotalPrice_returnsBadRequest() throws Exception {
+    @DisplayName("주문 생성 요청의 회원 ID가 없으면 400 응답을 반환한다")
+    void createOrder_withoutMemberId_returnsBadRequest() throws Exception {
+        mockMvc.perform(
+                post("/api/v1/orders")
+                    .contentType(APPLICATION_JSON)
+                    .content("""
+                        {
+                          "productId": 10,
+                          "quantity": 2
+                        }
+                        """)
+            )
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.errorCode").value("COMMON-400"));
+
+        then(orderService).shouldHaveNoInteractions();
+    }
+
+    @Test
+    @DisplayName("주문 생성 요청의 상품 ID가 없으면 400 응답을 반환한다")
+    void createOrder_withoutProductId_returnsBadRequest() throws Exception {
         mockMvc.perform(
                 post("/api/v1/orders")
                     .contentType(APPLICATION_JSON)
                     .content("""
                         {
                           "memberId": 1,
-                          "productId": 10,
-                          "quantity": 2,
-                          "totalPrice": 0
+                          "quantity": 2
                         }
                         """)
             )
