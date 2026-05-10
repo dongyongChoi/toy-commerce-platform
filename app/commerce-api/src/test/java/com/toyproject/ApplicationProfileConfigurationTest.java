@@ -37,6 +37,8 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("local");
         assertThat(propertySource.getProperty("toy-commerce.config.message"))
             .isEqualTo("로컬 기본 설정입니다.");
+        assertThat(propertySource.getProperty("toy-commerce.settlement.legacy.enabled"))
+            .isEqualTo(false);
     }
 
     @Test
@@ -85,6 +87,16 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("toy-commerce.order.created");
         assertThat(propertySource.getProperty("toy-commerce.kafka.topics.order-cancelled"))
             .isEqualTo("toy-commerce.order.cancelled");
+        assertThat(propertySource.getProperty("toy-commerce.settlement.legacy.enabled"))
+            .isEqualTo("${LEGACY_ORACLE_ENABLED:false}");
+        assertThat(propertySource.getProperty("toy-commerce.settlement.legacy.url"))
+            .isEqualTo("${LEGACY_ORACLE_URL:jdbc:oracle:thin:@localhost:1521/XEPDB1}");
+        assertThat(propertySource.getProperty("toy-commerce.settlement.legacy.username"))
+            .isEqualTo("${LEGACY_ORACLE_USER:legacy_user}");
+        assertThat(propertySource.getProperty("toy-commerce.settlement.legacy.password"))
+            .isEqualTo("${LEGACY_ORACLE_PASSWORD:legacy_password}");
+        assertThat(propertySource.getProperty("toy-commerce.settlement.legacy.driver-class-name"))
+            .isEqualTo("${LEGACY_ORACLE_DRIVER_CLASS_NAME:oracle.jdbc.OracleDriver}");
         assertThat(propertySource.getProperty("toy-commerce.logging.logstash.host"))
             .isEqualTo("${LOGSTASH_HOST:localhost}");
         assertThat(propertySource.getProperty("toy-commerce.logging.logstash.port"))

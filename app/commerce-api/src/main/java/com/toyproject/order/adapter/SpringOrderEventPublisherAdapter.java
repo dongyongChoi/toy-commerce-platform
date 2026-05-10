@@ -1,6 +1,7 @@
 package com.toyproject.order.adapter;
 
 import com.toyproject.order.application.event.OrderCancelledEvent;
+import com.toyproject.order.application.event.OrderConfirmedEvent;
 import com.toyproject.order.application.event.OrderCreatedEvent;
 import com.toyproject.order.application.port.OrderEventPort;
 import lombok.RequiredArgsConstructor;
@@ -14,6 +15,11 @@ public class SpringOrderEventPublisherAdapter implements OrderEventPort {
 
     @Override
     public void publishOrderCreated(OrderCreatedEvent event) {
+        eventPublisher.publishEvent(event);
+    }
+
+    @Override
+    public void publishOrderConfirmed(OrderConfirmedEvent event) {
         eventPublisher.publishEvent(event);
     }
 

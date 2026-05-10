@@ -3,6 +3,7 @@ package com.toyproject.order.application;
 import com.toyproject.common.core.DomainException;
 import com.toyproject.common.core.ErrorCode;
 import com.toyproject.order.application.event.OrderCancelledEvent;
+import com.toyproject.order.application.event.OrderConfirmedEvent;
 import com.toyproject.order.application.event.OrderCreatedEvent;
 import com.toyproject.order.application.port.MemberPort;
 import com.toyproject.order.application.port.OrderEventPort;
@@ -66,6 +67,7 @@ public class OrderService {
         PurchaseOrder order = purchaseOrderRepository.findById(orderId)
             .orElseThrow(() -> new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "주문을 찾을 수 없습니다."));
         order.confirm();
+        orderEventPort.publishOrderConfirmed(OrderConfirmedEvent.from(order));
         return OrderResponse.from(order);
     }
 

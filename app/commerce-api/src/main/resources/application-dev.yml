@@ -42,6 +42,13 @@ toy-commerce:
     topics:
       order-created: toy-commerce.order.created
       order-cancelled: toy-commerce.order.cancelled
+  settlement:
+    legacy:
+      enabled: ${LEGACY_ORACLE_ENABLED:false}
+      url: ${LEGACY_ORACLE_URL:jdbc:oracle:thin:@localhost:1521/XEPDB1}
+      username: ${LEGACY_ORACLE_USER:legacy_user}
+      password: ${LEGACY_ORACLE_PASSWORD:legacy_password}
+      driver-class-name: ${LEGACY_ORACLE_DRIVER_CLASS_NAME:oracle.jdbc.OracleDriver}
   logging:
     logstash:
       host: ${LOGSTASH_HOST:localhost}

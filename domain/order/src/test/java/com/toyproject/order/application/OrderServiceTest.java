@@ -2,6 +2,7 @@ package com.toyproject.order.application;
 
 import com.toyproject.common.core.DomainException;
 import com.toyproject.order.application.event.OrderCancelledEvent;
+import com.toyproject.order.application.event.OrderConfirmedEvent;
 import com.toyproject.order.application.event.OrderCreatedEvent;
 import com.toyproject.order.application.port.MemberPort;
 import com.toyproject.order.application.port.OrderEventPort;
@@ -53,6 +54,8 @@ class OrderServiceTest {
     private ArgumentCaptor<PurchaseOrder> orderCaptor;
     @Captor
     private ArgumentCaptor<OrderCreatedEvent> orderCreatedEventCaptor;
+    @Captor
+    private ArgumentCaptor<OrderConfirmedEvent> orderConfirmedEventCaptor;
     @Captor
     private ArgumentCaptor<OrderCancelledEvent> orderCancelledEventCaptor;
 
@@ -159,7 +162,7 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("CREATED 상태 주문을 확정하면 CONFIRMED 상태로 전환된다")
+    @DisplayName("CREATED 상태 주문을 확정하면 CONFIRMED 상태로 전환하고 주문 확정 이벤트를 발행한다")
     void confirmOrder_transitionsToConfirmed() {
         PurchaseOrder order = new PurchaseOrder(1L, 10L, 2, BigDecimal.valueOf(20000));
         ReflectionTestUtils.setField(order, "id", 1L);
@@ -168,6 +171,13 @@ class OrderServiceTest {
         OrderResponse result = orderService.confirmOrder(1L);
 
         assertThat(result.status()).isEqualTo("CONFIRMED");
+        then(orderEventPort).should().publishOrderConfirmed(orderConfirmedEventCaptor.capture());
+        OrderConfirmedEvent event = orderConfirmedEventCaptor.getValue();
+        assertThat(event.orderId()).isEqualTo(1L);
+        assertThat(event.memberId()).isEqualTo(1L);
+        assertThat(event.productId()).isEqualTo(10L);
+        assertThat(event.quantity()).isEqualTo(2);
+        assertThat(event.totalPrice()).isEqualByComparingTo("20000");
     }
 
     @Test
@@ -178,6 +188,8 @@ class OrderServiceTest {
         assertThatThrownBy(() -> orderService.confirmOrder(99L))
             .isInstanceOf(DomainException.class)
             .hasMessage("주문을 찾을 수 없습니다.");
+
+        then(orderEventPort).shouldHaveNoInteractions();
     }
 
     @Test

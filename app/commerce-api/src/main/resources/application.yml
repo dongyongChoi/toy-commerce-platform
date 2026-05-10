@@ -20,6 +20,9 @@ toy-commerce:
   config:
     source: local
     message: 로컬 기본 설정입니다.
+  settlement:
+    legacy:
+      enabled: false
 
 management:
   endpoints:

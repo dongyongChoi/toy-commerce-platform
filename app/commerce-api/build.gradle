@@ -10,6 +10,7 @@ dependencies {
     implementation project(':domain:order')
     implementation project(':domain:inventory')
     implementation project(':domain:audit')
+    implementation project(':domain:settlement')
 
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -22,6 +23,7 @@ dependencies {
 
     runtimeOnly 'com.h2database:h2'
     runtimeOnly 'com.mysql:mysql-connector-j'
+    runtimeOnly 'com.oracle.database.jdbc:ojdbc11'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }

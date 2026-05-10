@@ -25,6 +25,8 @@
   - 재고 도메인
 - `domain/audit`
   - MongoDB 기반 감사 로그 도메인
+- `domain/settlement`
+  - 레거시 정산 연동 도메인
 
 ## 아키텍처 다이어그램
 
@@ -42,6 +44,7 @@ flowchart LR
     API --> ORDER["domain:order<br/>주문"]
     API --> INVENTORY["domain:inventory<br/>재고"]
     API --> AUDIT["domain:audit<br/>감사 로그"]
+    API --> SETTLEMENT["domain:settlement<br/>정산"]
 
     CW --> CC
     MEMBER --> CW
@@ -54,6 +57,7 @@ flowchart LR
     INVENTORY --> CC
     AUDIT --> CW
     AUDIT --> ORDER
+    SETTLEMENT --> ORDER
     CONFIG --> CONFIG_REPO["classpath:/config-repo<br/>native backend"]
 ```
 
@@ -73,12 +77,16 @@ flowchart TD
         AuditController["AuditLogController<br/>감사 로그 조회 API"]
         AuditService["AuditLogService<br/>감사 로그 저장 / 조회"]
         MongoRepository["MongoRepository"]
+        SettlementService["SettlementService<br/>정산 요청"]
+        LegacySettlementAdapter["LegacySettlementPort Adapter<br/>no-op / JDBC"]
 
         Controller --> Service
         Service --> Repository
         Repository --> ORM
         AuditController --> AuditService
         AuditService --> MongoRepository
+        Service --> SettlementService
+        SettlementService --> LegacySettlementAdapter
 
         CommonWeb["common-web<br/>응답 포맷 / 전역 예외 처리"]
         CommonCore["common-core<br/>공통 예외 / 에러 코드"]
@@ -90,6 +98,7 @@ flowchart TD
     ORM --> H2["H2<br/>local profile"]
     ORM -. 추후 전환 .-> MySQL["MySQL"]
     MongoRepository --> MongoDB["MongoDB<br/>audit_logs"]
+    LegacySettlementAdapter -. enabled=true .-> Oracle["Oracle<br/>legacy settlement"]
 
     ConfigClient["Spring Cloud Config Client<br/>config profile"]
     ConfigClient -. optional import .-> ConfigServer["Config Server<br/>localhost:8888"]
@@ -131,6 +140,21 @@ flowchart LR
 
 `dev` 프로필에서는 Logback이 콘솔과 파일에 로그를 남기고, Syslog appender를 통해 Logstash로도 로그를 전송합니다. Logstash는 수신한 로그에 `service.name=commerce-api` 필드를 붙여 Elasticsearch의 `toy-commerce-logs-*` 인덱스로 저장하고, Kibana에서 조회합니다.
 
+### 5. 레거시 정산 연동 흐름
+
+```mermaid
+flowchart LR
+    OrderService["OrderService<br/>주문 확정"] --> OrderConfirmedEvent["OrderConfirmedEvent"]
+    OrderConfirmedEvent --> SettlementListener["SettlementOrderEventListener<br/>AFTER_COMMIT"]
+    SettlementListener --> SettlementService["SettlementService"]
+    SettlementService --> SettlementPort["LegacySettlementPort"]
+    SettlementPort --> NoopAdapter["NoopLegacySettlementAdapter<br/>기본값"]
+    SettlementPort -. enabled=true .-> JdbcAdapter["JdbcLegacySettlementAdapter"]
+    JdbcAdapter --> Oracle["Oracle<br/>legacy_settlement_requests"]
+```
+
+주문이 `CONFIRMED` 상태로 전환되면 `OrderConfirmedEvent`를 발행합니다. 트랜잭션 커밋 이후 `SettlementOrderEventListener`가 이벤트를 받아 정산 서비스를 호출하고, 기본값에서는 no-op 어댑터가 동작합니다. `toy-commerce.settlement.legacy.enabled=true`로 켜면 JDBC 어댑터가 별도 레거시 DataSource를 사용해 Oracle 정산 테이블로 요청을 전달합니다.
+
 ## 현재 기술 스택
 
 - Java
@@ -140,6 +164,7 @@ flowchart LR
 - Spring Data JPA / Hibernate
 - H2
 - MySQL
+- Oracle
 - Redis Cache
 - Spring ApplicationEvent
 - Kafka Producer
@@ -192,9 +217,8 @@ flowchart LR
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
-2. Oracle 레거시 정산 연동 흐름 추가
-3. Config Server backend를 native에서 Git 저장소로 전환
-4. Prometheus와 Grafana 기반 메트릭 시각화
+2. Config Server backend를 native에서 Git 저장소로 전환
+3. Prometheus와 Grafana 기반 메트릭 시각화
 
 ## 로컬 실행
 
@@ -243,6 +267,8 @@ MySQL, Redis, Kafka, MongoDB가 외부 서버에 있다면 [dev-vm-options.examp
 -DKAFKA_BOOTSTRAP_SERVERS=192.168.0.10:9092
 -DMONGODB_HOST=192.168.0.10
 -DLOGSTASH_HOST=192.168.0.10
+-DLEGACY_ORACLE_ENABLED=false
+-DLEGACY_ORACLE_URL=jdbc:oracle:thin:@192.168.0.10:1521/XEPDB1
 ```
 
 `.env` 파일은 Docker Compose가 읽는 값이고, 로컬 JVM으로 실행하는 Spring Boot 애플리케이션에는 자동으로 주입되지 않습니다. IntelliJ에서 애플리케이션을 직접 실행할 때는 VM options 또는 Environment variables로 주입해야 합니다.
