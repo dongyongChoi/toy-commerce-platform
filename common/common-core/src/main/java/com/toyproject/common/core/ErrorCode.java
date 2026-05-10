@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 public enum ErrorCode {
     INVALID_INPUT("COMMON-400", HttpStatus.BAD_REQUEST, "잘못된 요청입니다."),
     RESOURCE_NOT_FOUND("COMMON-404", HttpStatus.NOT_FOUND, "대상을 찾을 수 없습니다."),
+    DUPLICATE_RESOURCE("COMMON-409", HttpStatus.CONFLICT, "이미 존재하는 대상입니다."),
     INTERNAL_ERROR("COMMON-500", HttpStatus.INTERNAL_SERVER_ERROR, "서버 오류가 발생했습니다.");
 
     private final String code;
@@ -29,4 +30,3 @@ public enum ErrorCode {
         return message;
     }
 }
-

@@ -1,5 +1,7 @@
 package com.toyproject.member.web;
 
+import com.toyproject.common.core.DomainException;
+import com.toyproject.common.core.ErrorCode;
 import com.toyproject.common.web.GlobalExceptionHandler;
 import com.toyproject.member.application.MemberService;
 import com.toyproject.member.web.dto.CreateMemberRequest;
@@ -78,6 +80,28 @@ class MemberControllerTest {
     }
 
     @Test
+    @DisplayName("이미 사용 중인 이메일로 회원 생성 시 409 응답을 반환한다")
+    void createMember_whenEmailDuplicated_returnsConflict() throws Exception {
+        given(memberService.createMember(any(CreateMemberRequest.class)))
+            .willThrow(new DomainException(ErrorCode.DUPLICATE_RESOURCE, "이미 사용 중인 이메일입니다."));
+
+        mockMvc.perform(
+                post("/api/v1/members")
+                    .contentType(APPLICATION_JSON)
+                    .content("""
+                        {
+                          "name": "Alice",
+                          "email": "alice@example.com"
+                        }
+                        """)
+            )
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.message").value("이미 사용 중인 이메일입니다."))
+            .andExpect(jsonPath("$.errorCode").value("COMMON-409"));
+    }
+
+    @Test
     @DisplayName("회원 단건 조회 요청이 유효하면 회원 정보를 반환한다")
     void getMember_returnsMemberResponse() throws Exception {
         given(memberService.getMember(1L))
@@ -113,6 +137,28 @@ class MemberControllerTest {
             .andExpect(jsonPath("$.data.id").value(1))
             .andExpect(jsonPath("$.data.name").value("Alice Updated"))
             .andExpect(jsonPath("$.data.email").value("alice.updated@example.com"));
+    }
+
+    @Test
+    @DisplayName("이미 사용 중인 이메일로 회원 수정 시 409 응답을 반환한다")
+    void updateMember_whenEmailDuplicated_returnsConflict() throws Exception {
+        given(memberService.updateMember(any(Long.class), any(UpdateMemberRequest.class)))
+            .willThrow(new DomainException(ErrorCode.DUPLICATE_RESOURCE, "이미 사용 중인 이메일입니다."));
+
+        mockMvc.perform(
+                put("/api/v1/members/{memberId}", 1L)
+                    .contentType(APPLICATION_JSON)
+                    .content("""
+                        {
+                          "name": "Alice Updated",
+                          "email": "bob@example.com"
+                        }
+                        """)
+            )
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.success").value(false))
+            .andExpect(jsonPath("$.message").value("이미 사용 중인 이메일입니다."))
+            .andExpect(jsonPath("$.errorCode").value("COMMON-409"));
     }
 
     @Test

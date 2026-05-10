@@ -8,6 +8,7 @@ import com.toyproject.member.web.dto.CreateMemberRequest;
 import com.toyproject.member.web.dto.MemberResponse;
 import com.toyproject.member.web.dto.UpdateMemberRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,15 +33,28 @@ public class MemberService {
 
     @Transactional
     public MemberResponse createMember(CreateMemberRequest request) {
-        Member member = memberRepository.save(new Member(request.name(), request.email()));
-        return MemberResponse.from(member);
+        validateNewEmail(request.email());
+
+        try {
+            Member member = memberRepository.saveAndFlush(new Member(request.name(), request.email()));
+            return MemberResponse.from(member);
+        } catch (DataIntegrityViolationException exception) {
+            throw duplicateEmailException();
+        }
     }
 
     @Transactional
     public MemberResponse updateMember(Long memberId, UpdateMemberRequest request) {
         Member member = findMember(memberId);
-        member.update(request.name(), request.email());
-        return MemberResponse.from(member);
+        validateUpdateEmail(request.email(), memberId);
+
+        try {
+            member.update(request.name(), request.email());
+            memberRepository.flush();
+            return MemberResponse.from(member);
+        } catch (DataIntegrityViolationException exception) {
+            throw duplicateEmailException();
+        }
     }
 
     @Transactional
@@ -52,5 +66,21 @@ public class MemberService {
     private Member findMember(Long memberId) {
         return memberRepository.findById(memberId)
             .orElseThrow(() -> new DomainException(ErrorCode.RESOURCE_NOT_FOUND, "member not found"));
+    }
+
+    private void validateNewEmail(String email) {
+        if (memberRepository.existsByEmail(email)) {
+            throw duplicateEmailException();
+        }
+    }
+
+    private void validateUpdateEmail(String email, Long memberId) {
+        if (memberRepository.existsByEmailAndIdNot(email, memberId)) {
+            throw duplicateEmailException();
+        }
+    }
+
+    private DomainException duplicateEmailException() {
+        return new DomainException(ErrorCode.DUPLICATE_RESOURCE, "이미 사용 중인 이메일입니다.");
     }
 }

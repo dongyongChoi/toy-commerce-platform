@@ -192,10 +192,9 @@ flowchart LR
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
-2. 회원 이메일 중복 예외 처리
-3. Oracle 레거시 정산 연동 흐름 추가
-4. Config Server backend를 native에서 Git 저장소로 전환
-5. Prometheus와 Grafana 기반 메트릭 시각화
+2. Oracle 레거시 정산 연동 흐름 추가
+3. Config Server backend를 native에서 Git 저장소로 전환
+4. Prometheus와 Grafana 기반 메트릭 시각화
 
 ## 로컬 실행
 
