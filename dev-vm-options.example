@@ -1,4 +1,9 @@
--Dspring.profiles.active=dev
+-Dspring.profiles.active=dev-config
+-DCONFIG_SERVER_URI=http://localhost:8888
+-DCONFIG_REPO_URI=file:C:/Users/home/Documents/project/toy-project
+-DCONFIG_REPO_SEARCH_PATHS=config-repo
+-DCONFIG_REPO_DEFAULT_LABEL=main
+-DCONFIG_REPO_CLONE_ON_START=false
 -DMYSQL_HOST=192.168.0.10
 -DMYSQL_PORT=3306
 -DMYSQL_DATABASE=toy_commerce

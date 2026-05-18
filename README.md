@@ -10,7 +10,7 @@
   - 단일 실행 Spring Boot 애플리케이션
 - `app/config-server`
   - Spring Cloud Config Server
-  - 로컬 학습용 native backend로 `commerce-api` 외부 설정 제공
+  - Git backend로 `commerce-api` 외부 설정 제공
 - `common/common-core`
   - 공통 예외, 에러 코드 같은 기본 규약
 - `common/common-web`
@@ -58,7 +58,7 @@ flowchart LR
     AUDIT --> CW
     AUDIT --> ORDER
     SETTLEMENT --> ORDER
-    CONFIG --> CONFIG_REPO["classpath:/config-repo<br/>native backend"]
+    CONFIG --> CONFIG_REPO["config-repo/<br/>Git backend"]
 ```
 
 ### 2. 실행 구조
@@ -102,7 +102,7 @@ flowchart TD
 
     ConfigClient["Spring Cloud Config Client<br/>config profile"]
     ConfigClient -. optional import .-> ConfigServer["Config Server<br/>localhost:8888"]
-    ConfigServer --> ConfigRepo["Native Config Repo<br/>commerce-api.yml"]
+    ConfigServer --> ConfigRepo["Git Config Repo<br/>config-repo/commerce-api.yml"]
 ```
 
 ### 3. 주문 이벤트 흐름
@@ -154,6 +154,21 @@ flowchart LR
 ```
 
 주문이 `CONFIRMED` 상태로 전환되면 `OrderConfirmedEvent`를 발행합니다. 트랜잭션 커밋 이후 `SettlementOrderEventListener`가 이벤트를 받아 정산 서비스를 호출하고, 기본값에서는 no-op 어댑터가 동작합니다. `toy-commerce.settlement.legacy.enabled=true`로 켜면 JDBC 어댑터가 별도 레거시 DataSource를 사용해 Oracle 정산 테이블로 요청을 전달합니다.
+
+### 6. 설정 refresh 흐름
+
+```mermaid
+flowchart LR
+    ConfigRepo["Git Config Repo<br/>config-repo/commerce-api.yml"] --> ConfigServer["Config Server"]
+    Client["Client / Operator"] --> RefreshEndpoint["POST /actuator/refresh"]
+    RefreshEndpoint --> CommerceApi["commerce-api"]
+    CommerceApi --> ConfigServer
+    CommerceApi --> RefreshScope["ConfigInfoProperties<br/>@RefreshScope"]
+    Client --> ConfigApi["GET /api/v1/config"]
+    ConfigApi --> RefreshScope
+```
+
+`commerce-api`는 시작 시점에 Config Server에서 설정을 읽습니다. 실행 중 Git 설정이 바뀐 경우에는 `config` 프로필에서 노출되는 `/actuator/refresh`를 호출해야 `@RefreshScope`가 적용된 설정 Bean이 새 값으로 갱신됩니다. 현재 프로젝트에서는 `ConfigInfoProperties`가 refresh 대상입니다.
 
 ## 현재 기술 스택
 
@@ -209,7 +224,8 @@ flowchart LR
 - `application.yml`: 공통 설정, 기본 프로필, profile group
 - `application-local.yml`: 로컬 PC용 H2, simple cache 설정
 - `application-dev.yml`: 개발 환경용 MySQL, Redis, Kafka, MongoDB 설정
-- `application-config.yml`: Spring Cloud Config Client 설정
+- `application-config.yml`: Spring Cloud Config Client와 `/actuator/refresh` 노출 설정
+- `config-repo/commerce-api.yml`: Config Server가 Git backend로 제공하는 commerce-api 외부 설정
 - `logback-spring.xml`: 콘솔, 파일, Logstash Syslog appender 설정
 - `dev-vm-options.example`: 외부 개발 인프라 접속값을 VM options로 주입하기 위한 템플릿
 - `observability/logstash/pipeline/commerce-api.conf`: commerce-api 로그를 Elasticsearch 인덱스로 전달하는 Logstash 파이프라인
@@ -217,8 +233,8 @@ flowchart LR
 ## 권장 다음 작업
 
 1. `./gradlew test` 또는 `gradlew.bat test`로 기본 빌드 확인
-2. Config Server backend를 native에서 Git 저장소로 전환
-3. Prometheus와 Grafana 기반 메트릭 시각화
+2. Prometheus와 Grafana 기반 메트릭 시각화
+3. 정산 연동 실패를 다루는 Outbox / retry / compensation 패턴 학습
 
 ## 로컬 실행
 
@@ -261,7 +277,11 @@ http://localhost:5601
 MySQL, Redis, Kafka, MongoDB가 외부 서버에 있다면 [dev-vm-options.example](/c:/Users/home/Documents/project/toy-project/dev-vm-options.example)의 값을 복사해 IntelliJ Run Configuration의 VM options에 붙여 넣고 IP와 계정 정보를 환경에 맞게 바꿉니다.
 
 ```text
--Dspring.profiles.active=dev
+-Dspring.profiles.active=dev-config
+-DCONFIG_SERVER_URI=http://localhost:8888
+-DCONFIG_REPO_URI=file:C:/Users/home/Documents/project/toy-project
+-DCONFIG_REPO_SEARCH_PATHS=config-repo
+-DCONFIG_REPO_DEFAULT_LABEL=main
 -DMYSQL_HOST=192.168.0.10
 -DREDIS_HOST=192.168.0.10
 -DKAFKA_BOOTSTRAP_SERVERS=192.168.0.10:9092
@@ -276,6 +296,18 @@ MySQL, Redis, Kafka, MongoDB가 외부 서버에 있다면 [dev-vm-options.examp
 Kafka를 외부 서버의 Docker Compose로 실행한다면 `.env`의 `KAFKA_HOST`도 외부에서 접근 가능한 서버 IP로 바꿔야 합니다. 이 값은 Kafka broker가 클라이언트에게 알려주는 재접속 주소(`advertised.listeners`)로 사용됩니다.
 
 Spring Cloud Config를 확인하려면 먼저 Config Server를 실행합니다.
+
+Config Server는 Git backend를 사용합니다. 기본값은 Config Server 프로세스의 현재 작업 디렉터리를 Git 저장소로 보고, 그 안의 `config-repo/commerce-api.yml` 파일을 읽습니다. Gradle `bootRun`은 프로젝트 루트를 작업 디렉터리로 사용하도록 설정되어 있습니다.
+
+IntelliJ에서 Config Server를 직접 실행할 때 작업 디렉터리가 프로젝트 루트가 아니라면 VM options에 아래 값을 지정합니다.
+
+```text
+-DCONFIG_REPO_URI=file:C:/Users/home/Documents/project/toy-project
+-DCONFIG_REPO_SEARCH_PATHS=config-repo
+-DCONFIG_REPO_DEFAULT_LABEL=main
+```
+
+Git backend는 Git 저장소의 label, 즉 브랜치 기준으로 설정을 제공합니다. `config-repo/commerce-api.yml`을 바꾼 뒤 Config Server에서 확실히 확인하려면 변경 사항을 커밋해야 합니다.
 
 ```powershell
 .\gradlew.bat :app:config-server:bootRun
@@ -294,6 +326,24 @@ Spring Cloud Config를 확인하려면 먼저 Config Server를 실행합니다.
 ```
 
 Config Server에서 받은 설정은 아래 API로 확인할 수 있습니다.
+
+```powershell
+curl http://localhost:8080/api/v1/config
+```
+
+설정 파일을 변경한 뒤 애플리케이션 재시작 없이 반영하려면 `config-repo/commerce-api.yml`을 수정하고 Git commit을 만든 다음, 먼저 Config Server 응답이 바뀌었는지 확인합니다.
+
+```powershell
+curl http://localhost:8888/commerce-api/default
+```
+
+그다음 `commerce-api`에 refresh를 요청합니다.
+
+```powershell
+Invoke-RestMethod -Method Post -Uri http://localhost:8080/actuator/refresh
+```
+
+다시 설정 조회 API를 호출하면 refresh된 값을 확인할 수 있습니다.
 
 ```powershell
 curl http://localhost:8080/api/v1/config

@@ -122,6 +122,8 @@ class ApplicationProfileConfigurationTest {
             .isEqualTo("commerce-api");
         assertThat(propertySource.getProperty("spring.cloud.config.fail-fast"))
             .isEqualTo(false);
+        assertThat(propertySource.getProperty("management.endpoints.web.exposure.include"))
+            .isEqualTo("health,info,refresh");
     }
 
     private PropertySource<?> loadYamlPropertySource(String resourceName) throws IOException {

@@ -6,13 +6,19 @@ import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.autoconfigure.context.ConfigurationPropertiesAutoConfiguration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.cloud.autoconfigure.RefreshAutoConfiguration;
+import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.AnnotationUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ConfigInfoPropertiesTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
-        .withConfiguration(AutoConfigurations.of(ConfigurationPropertiesAutoConfiguration.class))
+        .withConfiguration(AutoConfigurations.of(
+            ConfigurationPropertiesAutoConfiguration.class,
+            RefreshAutoConfiguration.class
+        ))
         .withUserConfiguration(TestConfiguration.class);
 
     @Test
@@ -29,6 +35,14 @@ class ConfigInfoPropertiesTest {
                 assertThat(properties.getSource()).isEqualTo("config-server");
                 assertThat(properties.getMessage()).isEqualTo("외부 설정입니다.");
             });
+    }
+
+    @Test
+    @DisplayName("ConfigInfoProperties는 refresh scope로 갱신 대상이 된다")
+    void configInfoPropertiesUsesRefreshScope() {
+        RefreshScope refreshScope = AnnotationUtils.findAnnotation(ConfigInfoProperties.class, RefreshScope.class);
+
+        assertThat(refreshScope).isNotNull();
     }
 
     @Configuration

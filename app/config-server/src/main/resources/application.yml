@@ -4,13 +4,14 @@ server:
 spring:
   application:
     name: config-server
-  profiles:
-    active: native
   cloud:
     config:
       server:
-        native:
-          search-locations: classpath:/config-repo
+        git:
+          uri: ${CONFIG_REPO_URI:file:./}
+          search-paths: ${CONFIG_REPO_SEARCH_PATHS:config-repo}
+          default-label: ${CONFIG_REPO_DEFAULT_LABEL:main}
+          clone-on-start: ${CONFIG_REPO_CLONE_ON_START:false}
 
 management:
   endpoints:

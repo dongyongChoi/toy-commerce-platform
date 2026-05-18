@@ -6,3 +6,9 @@ spring:
       enabled: true
       name: commerce-api
       fail-fast: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,refresh
