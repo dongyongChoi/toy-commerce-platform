@@ -4,6 +4,36 @@
 
 현재는 마이크로서비스가 아니라, 하나의 Spring Boot 애플리케이션 안에서 도메인 모듈을 분리한 형태의 멀티모듈 모놀리스 구조입니다. 이후 학습 단계에 따라 Redis, Kafka, Spring Cloud Config, Kubernetes, Istio, ELK, Prometheus, Thanos, Grafana, GoCD 등을 순차적으로 붙여 나가는 것을 목표로 합니다.
 
+## 학습 목표와 진행 방향
+
+이 프로젝트는 기술을 한 번에 모두 붙이는 것이 아니라, 커머스 도메인의 실제 흐름에 맞춰 필요한 기술을 하나씩 적용해보는 것을 목표로 합니다. 처음부터 마이크로서비스로 분리하지 않고, 단일 Spring Boot 애플리케이션 안에서 도메인 모듈을 나누어 도메인 경계와 의존성 방향을 먼저 익힙니다.
+
+현재는 Java 기반으로 학습을 진행합니다. Kotlin은 당장 함께 도입하기보다, Java와 Spring 생태계의 기본 흐름이 충분히 익숙해진 뒤 필요하다고 판단되면 다시 적용합니다.
+
+학습 원칙은 아래와 같습니다.
+
+- 새 기술은 단순 설치가 아니라 실제 유스케이스에 연결합니다.
+- 기능을 추가할 때는 가능한 한 테스트 코드를 함께 작성합니다.
+- 로컬 개발, 외부 인프라 연동, 운영 관찰 가능성 순서로 확장합니다.
+- 실무 상황을 가정하되, 학습 순서를 해치지 않도록 한 단계씩 진행합니다.
+
+## 학습 진행 현황
+
+| 단계 | 학습 주제 | 현재 적용 방식 | 상태 |
+| --- | --- | --- | --- |
+| 1 | Java, Gradle, Spring Boot, Spring MVC | Gradle 멀티모듈과 `commerce-api` 단일 실행 애플리케이션 | 완료 |
+| 2 | JPA / Hibernate, H2, MySQL | local은 H2, dev는 MySQL 설정으로 CRUD 흐름 구성 | 완료 |
+| 3 | Redis | 상품 조회 캐시와 dev Redis 설정 적용 | 완료 |
+| 4 | Kafka | 주문 이벤트 발행 / 구독 흐름 구성 | 완료 |
+| 5 | MongoDB | Kafka 주문 이벤트 수신 후 감사 로그 저장 / 조회 API 구성 | 완료 |
+| 6 | Spring Cloud Config | Config Server, Git backend, 수동 refresh 흐름 구성 | 완료 |
+| 7 | ELK | Logback, Logstash, Elasticsearch, Kibana 기반 로그 수집 흐름 구성 | 완료 |
+| 8 | Oracle | 주문 확정 후 레거시 정산 연동 어댑터 구성 | 완료 |
+| 9 | Prometheus, Grafana | 애플리케이션 메트릭 수집과 시각화 | 다음 단계 |
+| 10 | Docker, Kubernetes, Istio | 애플리케이션 컨테이너화와 배포 / 트래픽 관리 | 예정 |
+| 11 | Thanos | Prometheus 장기 저장 / 확장 구조 학습 | 예정 |
+| 12 | GoCD | 배포 파이프라인 구성 | 예정 |
+
 ## 현재 구조
 
 - `app/commerce-api`
@@ -187,10 +217,11 @@ flowchart LR
 - Spring Cloud Config
 - MongoDB
 - ELK
+- Docker Compose
 
 ## 확장 방향
 
-현재 코드는 Java 기반으로 구성했고, Gradle 스크립트는 Groovy DSL을 사용합니다. 처음에는 `commerce-api` 하나만 실행하고, 도메인 경계는 모듈로만 분리해 둡니다. 이후 학습 단계에 따라 아래 순서로 확장합니다.
+현재 코드는 Java 기반으로 구성했고, Gradle 스크립트는 Groovy DSL을 사용합니다. 처음에는 `commerce-api` 하나만 실행하고, 도메인 경계는 모듈로만 분리해 둡니다. 이후 학습 단계에 따라 아래 순서로 확장합니다. 이미 완료한 항목도 이후 리팩토링이나 운영 관점 학습에서 다시 다룰 수 있습니다.
 
 1. MySQL, JPA 기반 CRUD 고도화
 2. Redis 캐시와 재고 보조 처리
@@ -202,9 +233,10 @@ flowchart LR
 8. MongoDB 감사 로그 조회 API
 9. ELK 기반 애플리케이션 로그 수집
 10. Oracle 레거시 정산 연동
-11. Docker, Kubernetes, Istio
-12. Prometheus, Thanos, Grafana
-13. GoCD 파이프라인
+11. Prometheus와 Grafana 기반 메트릭 시각화
+12. Docker 이미지 빌드, Kubernetes, Istio
+13. Thanos 기반 메트릭 장기 저장 / 확장
+14. GoCD 파이프라인
 
 ## 프로필 전략
 
